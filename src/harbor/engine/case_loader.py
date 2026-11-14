@@ -244,3 +244,42 @@ def _validate(case: Case) -> list[str]:
         need(cid, clues, "nudge_order")
 
     return problems
+
+
+def insert_case(conn, case: Case) -> None:
+    """Write a validated Case into the (empty) case tables of a run database."""
+    j = lambda items: json.dumps(list(items))
+    conn.execute(
+        "INSERT INTO case_meta VALUES (?,?,?,?,?,?,?)",
+        (case.case_id, case.title, case.premise, case.start_place, case.start_clock,
+         case.end_clock, j(case.nudge_order)),
+    )
+    conn.executemany("INSERT INTO places VALUES (?,?,?)",
+                     [(p.id, p.name, p.description) for p in case.places])
+    for a, b in case.exits:
+        conn.execute("INSERT OR IGNORE INTO exits VALUES (?,?)", (a, b))
+        conn.execute("INSERT OR IGNORE INTO exits VALUES (?,?)", (b, a))
+    conn.executemany(
+        "INSERT INTO characters VALUES (?,?,?,?,?,?,?,?)",
+        [(c.id, c.name, c.role, c.persona, c.speech_style, c.start_place,
+          j(c.schedule), c.fallback_line) for c in case.characters],
+    )
+    conn.executemany("INSERT INTO clues VALUES (?,?,?,?,?)",
+                     [(c.id, c.text, c.kind, c.found_at_place, j(c.keywords))
+                      for c in case.clues])
+    conn.executemany(
+        "INSERT INTO knowledge VALUES (?,?,?,?,?,?)",
+        [(k.character_id, k.clue_id, j(k.unlock_topics), k.min_trust,
+          j(k.related_clues), j(k.unlock_if_shown)) for k in case.knowledge],
+    )
+    conn.executemany(
+        "INSERT INTO pointers VALUES (?,?,?,?,?)",
+        [(p.character_id, p.clue_id, p.points_to_character, int(p.misleading), p.line)
+         for p in case.pointers],
+    )
+    s = case.solution
+    conn.execute(
+        "INSERT INTO case_solution VALUES (?,?,?,?,?,?)",
+        (s.culprit_id, s.motive, s.method, j(s.true_timeline), j(s.required_clue_ids),
+         s.min_supporting),
+    )

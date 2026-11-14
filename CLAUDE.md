@@ -9,6 +9,7 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'   # first-time setup
 .venv/bin/pytest                 # offline tests (default excludes live)
 .venv/bin/pytest -m live         # model-backed checks; needs ANTHROPIC_API_KEY and HARBOR_MODEL
 .venv/bin/harbor check-case      # validate cases/saltmere.json
+.venv/bin/harbor play            # play by typing commands (no model); --seed N, --db PATH
 ```
 
 ## Architecture rules (enforced by tests, do not relax)
@@ -40,4 +41,4 @@ The owner writes prose, data and judgement calls; Claude writes code and tests. 
 
 ## Status
 
-M0 done (scaffold, case loader, `harbor check-case`). Next: M1, engine core (schema, state, event log, `look` / `go` / `notebook`, plain CLI loop).
+M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, plain `harbor play` loop). Build decisions are in `docs/adr/002-build-decisions.md`. Next: M2, tracing and the model interface.
