@@ -72,4 +72,5 @@ def matches(text: str, terms) -> list[str]:
 
 
 def past_end(game: Game) -> bool:
+    """True once the clock has reached the end of the day (18:00 in Saltmere)."""
     return state.read(game)["clock"] >= state.clock_minutes(state.case_meta(game)["end_clock"])

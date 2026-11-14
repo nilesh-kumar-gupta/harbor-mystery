@@ -22,9 +22,9 @@ def look(ctx: Context) -> dict:
     st = state.read(game)
     here = rules.place(game, st["place"])
     clues = rules.visible_clues(game, here["id"])
-    for clue in clues:
+    clock = state.advance_clock(game, LOOK_MINUTES)  # first, so finds are stamped with the
+    for clue in clues:                               # time the action ends (ADR 002 #8)
         state.add_clue(game, clue["id"], None)
-    clock = state.advance_clock(game, LOOK_MINUTES)
     return {
         "ok": True, "place": here["name"], "description": here["description"],
         "present": _names(rules.present(game, here["id"])),

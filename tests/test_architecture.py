@@ -75,3 +75,15 @@ def test_npc_tools_cannot_name_a_character():
 def test_engine_steps_are_never_offered_to_a_model():
     offered = {s["name"] for a in ("gm", "npc") for s in REGISTRY.schemas(a)}
     assert not offered & set(REGISTRY.names("engine"))
+
+
+def test_only_the_reducer_writes_run_tables():
+    """SQL writes live in four places: the event reducer (run state), the case loader
+    (case tables, once), new_game (the runs row, once) and tracing (spans)."""
+    import re
+    allowed = {"engine/events.py", "engine/case_loader.py", "engine/state.py", "tracing.py"}
+    writers = {str(p.relative_to(SRC)) for p in SRC.rglob("*.py")
+               if re.search(r"\b(INSERT|UPDATE|DELETE|REPLACE)\b", p.read_text(encoding="utf-8"))}
+    assert writers <= allowed
+    state_src = (SRC / "engine" / "state.py").read_text(encoding="utf-8")
+    assert re.findall(r"\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+(\w+)", state_src) == ["runs"]

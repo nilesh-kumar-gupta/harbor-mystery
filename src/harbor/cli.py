@@ -7,6 +7,7 @@ registry and prints what comes back.
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -52,7 +53,11 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print) -> int:
     if db is None:
         Path("runs").mkdir(exist_ok=True)
         db = f"runs/{run_id}.sqlite"
-    ctx = Context(game=state.new_game(case, run_id, seed=seed, db_path=db))
+    if db != ":memory:" and Path(db).exists():
+        print(f"{db} already exists; choose another --db path", file=sys.stderr)
+        return 1
+    ctx = Context(game=state.new_game(case, run_id, seed=seed, db_path=db,
+                                      git_commit=_git_commit()))
     REGISTRY.call(ctx, "start_run", {}, "engine")
     out(f"{case.title}\n{case.premise}\n{HELP}")
     for line in (lines if lines is not None else _stdin_lines()):
@@ -74,6 +79,16 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print) -> int:
             out(f"The day is over ({closing.get('result')}).")
             break
     return 0
+
+
+def _git_commit() -> str | None:
+    """The checked-out commit, for the runs record; None outside a git checkout."""
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                             cwd=Path(__file__).parent, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None if out.returncode == 0 else None
 
 
 def _stdin_lines():

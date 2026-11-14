@@ -2,7 +2,7 @@
 and the state hash.
 
 Every change to run data goes through `record`: it appends one row to `events`
-and applies it with `apply`. Replaying the same rows through `apply` on a
+and applies it with the reducer `_apply`. Replaying the same rows through it on a
 fresh case load rebuilds the same state, which is the determinism test.
 """
 
@@ -35,10 +35,10 @@ def record(game, type: str, payload: dict) -> None:
         "INSERT INTO events (run_id, turn, type, payload, span_id) VALUES (?,?,?,?,?)",
         (game.run_id, turn, type, json.dumps(payload, sort_keys=True), game.span_id),
     )
-    apply(game.conn, game.run_id, turn, type, payload)
+    _apply(game.conn, game.run_id, turn, type, payload)
 
 
-def apply(conn, run_id: str, turn: int, type: str, p: dict) -> None:
+def _apply(conn, run_id: str, turn: int, type: str, p: dict) -> None:
     """The reducer: the only code that writes game_state, trust, notebook or conversations."""
     if type == "run_started":
         conn.execute(
@@ -101,7 +101,7 @@ def log(conn, run_id: str) -> list[dict]:
 def replay(conn, run_id: str, events: list[dict]) -> None:
     """Rebuild run state in `conn` (case tables loaded, run tables empty) from a log."""
     for e in events:
-        apply(conn, run_id, e["turn"], e["type"], e["payload"])
+        _apply(conn, run_id, e["turn"], e["type"], e["payload"])
 
 
 def state_hash(conn, run_id: str) -> str:

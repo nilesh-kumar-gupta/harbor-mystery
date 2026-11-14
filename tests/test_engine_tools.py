@@ -27,7 +27,7 @@ def test_look_returns_the_place_and_files_visible_clues(ctx, call):
     assert [c["id"] for c in out["clues"]] == ["C1"]
     assert state.found_clue_ids(ctx.game) == {"C1"}
     types = [e["type"] for e in events.log(ctx.game.conn, ctx.game.run_id)]
-    assert types == ["run_started", "clue_found", "clock_advanced"]
+    assert types == ["run_started", "clock_advanced", "clue_found"]
 
 
 def test_look_twice_does_not_duplicate_the_clue(ctx, call):
@@ -65,7 +65,7 @@ def test_notebook_lists_clues_and_is_free(ctx, call):
     call("look")
     before = snapshot(ctx)
     out = call("notebook")
-    assert out["clues"] == [{"id": "C1", "source": "seen", "place": "Harbor Quay", "at": "06:00",
+    assert out["clues"] == [{"id": "C1", "source": "seen", "place": "Harbor Quay", "at": "06:05",
                              "text": "The winch cable was cut clean, and the pins were knocked loose."}]
     assert snapshot(ctx) == before
 
@@ -86,11 +86,27 @@ def test_registry_refuses_bad_calls_as_values(ctx, name, arguments, audience, me
     assert snapshot(ctx) == before
 
 
-def test_a_crashing_tool_becomes_an_error_value(ctx, monkeypatch):
+def test_a_crashing_tool_becomes_an_error_value_and_is_rolled_back(ctx, monkeypatch):
+    before = snapshot(ctx)
     monkeypatch.setattr(state, "advance_clock", lambda *a: 1 / 0)
-    out = REGISTRY.call(ctx, "go", {"place": "office"}, "gm")
+    out = REGISTRY.call(ctx, "go", {"place": "office"}, "gm")   # fails after player_moved
     assert out["ok"] is False and "ZeroDivisionError" in out["error"]
     assert ctx.game.tool_depth == 0
+    assert snapshot(ctx) == before and state.read(ctx.game)["place"] == "quay"
+
+
+def test_registry_never_raises_on_a_malformed_call(ctx):
+    before = snapshot(ctx)
+    assert REGISTRY.call(ctx, ["look"], {}, "gm")["ok"] is False
+    assert REGISTRY.call(ctx, None, None, "gm")["ok"] is False
+    assert snapshot(ctx) == before
+
+
+def test_tools_before_start_run_say_so(case):
+    from harbor.tools import Context
+    fresh = Context(game=state.new_game(case, "unstarted"))
+    for name, audience in (("look", "gm"), ("end_turn", "engine")):
+        assert REGISTRY.call(fresh, name, {}, audience) == {"ok": False, "error": "run not started"}
 
 
 def test_state_cannot_change_outside_a_tool_call(ctx):
@@ -124,6 +140,18 @@ def test_the_day_ends_at_1800_and_then_every_tool_refuses(ctx, call):
     assert snapshot(ctx) == before
 
 
+def test_no_action_starts_after_1800_even_within_one_turn(ctx, call):
+    for _ in range(71):
+        call("go", place="office" if state.read(ctx.game)["place"] == "quay" else "quay")
+    assert call("look")["clock"] == "17:55"
+    assert call("look")["clock"] == "18:00"                 # started before the end: allowed
+    before = snapshot(ctx)
+    for name, arguments in (("go", {"place": "quay"}), ("look", {}), ("notebook", {})):
+        assert call(name, **arguments) == {"ok": False, "error": "the day is over"}
+    assert snapshot(ctx) == before
+    assert REGISTRY.call(ctx, "end_turn", {}, "engine")["result"] == "timeout"
+
+
 def test_replaying_the_event_log_rebuilds_the_same_state(ctx, call, case):
     call("look")
     call("go", place="fish market")
@@ -143,6 +171,13 @@ def test_case_tables_hold_the_loaded_case(ctx, case):
     assert count("labels") == 0
     run = ctx.game.conn.execute("SELECT * FROM runs").fetchone()
     assert (run["run_id"], run["seed"], run["case_id"]) == ("test-run", 1, "saltmere")
+
+
+def test_play_refuses_an_existing_database(case, tmp_path, capsys):
+    db = tmp_path / "run.sqlite"
+    assert play_loop(case, 0, str(db), lines=["look"], out=lambda *_: None) == 0
+    assert play_loop(case, 0, str(db), lines=["look"], out=lambda *_: None) == 1
+    assert "already exists" in capsys.readouterr().err
 
 
 def test_plain_play_loop(case):

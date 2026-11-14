@@ -1,8 +1,9 @@
 """The tool registry: name -> function + JSON schema, and the one way to call a tool.
 
 `Registry.call` is the only door into the engine. It checks the caller may use
-the tool, checks the arguments against the schema, opens the write guard and
-turns any exception into an error value, so an agent never sees a traceback.
+the tool, checks the arguments against the schema, opens the write guard, and
+turns any exception into an error value (rolling back what the call wrote), so
+an agent never sees a traceback and an error always means nothing changed.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from harbor.engine import state
+from harbor.engine import rules, state
 from harbor.engine.state import Game
 
 AUDIENCES = ("gm", "npc", "engine")  # engine steps are never offered to a model
@@ -67,23 +68,44 @@ class Registry:
                 for t in self._tools.values() if t.audience == audience]
 
     def call(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
-        """Run one tool for a caller of the given audience. Never raises."""
-        tool = self._tools.get(name)
+        """Run one tool for a caller of the given audience.
+
+        Never raises: every failure comes back as {"ok": false, "error": ...}. A call
+        is all or nothing: if the tool fails or returns an error value, whatever it
+        wrote is rolled back, so an error always means "nothing changed".
+        """
+        game = ctx.game
+        savepoint = f"tool_{game.tool_depth}"
+        game.conn.execute(f"SAVEPOINT {savepoint}")
+        game.tool_depth += 1
+        try:
+            result = self._run(ctx, name, arguments, audience)
+        except Exception as e:  # errors are values: the model must be able to recover
+            result = error(f"internal error in {name}: {type(e).__name__}: {e}")
+        finally:
+            game.tool_depth -= 1
+        if not result.get("ok"):
+            game.conn.execute(f"ROLLBACK TO {savepoint}")
+        game.conn.execute(f"RELEASE {savepoint}")
+        return result
+
+    def _run(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
+        tool = self._tools.get(name) if isinstance(name, str) else None
         if tool is None or tool.audience != audience:
             return error(f"unknown tool {name!r}", tools=self.names(audience))
         problem = _check_arguments(tool.input_schema, arguments)
         if problem:
             return error(problem)
         game = ctx.game
-        if not tool.when_ended and state.is_over(game):
-            return error("game over")
-        game.tool_depth += 1
-        try:
-            return tool.func(ctx, **(arguments or {}))
-        except Exception as e:  # errors are values: the model must be able to recover
-            return error(f"internal error in {name}: {type(e).__name__}: {e}")
-        finally:
-            game.tool_depth -= 1
+        started = state.read(game) is not None
+        if name != "start_run" and not started:
+            return error("run not started")
+        if started and not tool.when_ended:
+            if state.is_over(game):
+                return error("game over")
+            if rules.past_end(game):
+                return error("the day is over")
+        return tool.func(ctx, **(arguments or {}))
 
 
 def _check_arguments(schema: dict, arguments: Any) -> str | None:
