@@ -1,0 +1,125 @@
+{
+  "case_id": "saltmere",
+  "title": "The Saltmere Winch",
+  "premise": "The village of Saltmere wants its silting harbor dredged before the autumn trade ships arrive. Overnight, the dredger's winch cable was cut and its pins knocked loose. You are a stranger sent to find out who did it.",
+  "start_place": "quay",
+  "start_clock": "06:00",
+  "end_clock": "18:00",
+
+  "places": [
+    {"id": "quay", "name": "Harbor Quay", "description": "A stone quay slick with morning damp. The dredger sits idle at its mooring, its winch hanging slack."},
+    {"id": "office", "name": "Harbormaster's Office", "description": "A cramped room of ledgers, tide tables and a stove that has gone cold."},
+    {"id": "fish_market", "name": "Fish Market", "description": "Trestle tables under a tarred awning, with a small dock behind for the skiffs."},
+    {"id": "chandlery", "name": "Chandlery", "description": "Rope, lamp oil and iron tools, each shelf labelled in a careful hand."},
+    {"id": "salt_cask", "name": "The Salt Cask", "description": "A low-beamed tavern that smells of smoke and last night's ale."},
+    {"id": "lighthouse", "name": "Lighthouse", "description": "A whitewashed tower on the point. From the gallery the whole harbor lies open."}
+  ],
+
+  "exits": [
+    ["quay", "office"],
+    ["quay", "fish_market"],
+    ["quay", "chandlery"],
+    ["fish_market", "salt_cask"],
+    ["chandlery", "lighthouse"]
+  ],
+
+  "characters": [
+    {
+      "id": "odrin", "name": "Odrin Vale", "role": "harbormaster", "start_place": "office", "schedule": [],
+      "persona": "Gruff and tired. Wants the dredging done.",
+      "speech_style": "Short, blunt sentences. Little patience for small talk.",
+      "fallback_line": "I've a harbor to run. Ask me something I can answer."
+    },
+    {
+      "id": "mira", "name": "Mira Tolle", "role": "net-mender", "start_place": "quay", "schedule": [],
+      "persona": "Warm, up at all hours, always with a net in her lap.",
+      "speech_style": "Talks in half-finished thoughts that trail off and circle back.",
+      "fallback_line": "Oh, I... no, I've lost the thread of it. These nets won't mend themselves."
+    },
+    {
+      "id": "tom", "name": "Tom Brask", "role": "fishmonger", "start_place": "fish_market", "schedule": [],
+      "persona": "Jovial and evasive. Has a bad knee. Claims he was home asleep all night.",
+      "speech_style": "Loud, friendly, quick to change the subject to fish.",
+      "fallback_line": "Ha! You'll get no gossip from me, friend. Mackerel's fresh, though."
+    },
+    {
+      "id": "ysolde", "name": "Ysolde Crane", "role": "chandler", "start_place": "chandlery", "schedule": [],
+      "persona": "Precise and guarded about her customers.",
+      "speech_style": "Measured and exact. Answers the question asked and no more.",
+      "fallback_line": "I don't discuss my customers' purchases."
+    },
+    {
+      "id": "bram", "name": "Bram Oyle", "role": "lighthouse keeper", "start_place": "lighthouse", "schedule": [],
+      "persona": "Quiet. Notices boats and lights.",
+      "speech_style": "Few words, long pauses, plain observations.",
+      "fallback_line": "Couldn't say. I only watch the water."
+    },
+    {
+      "id": "hale", "name": "Hale Pruitt", "role": "tavern keeper", "start_place": "salt_cask", "schedule": [],
+      "persona": "A gossip who knows everyone's business and resents the harbor fees.",
+      "speech_style": "Chatty and confiding, leans in as if sharing a secret.",
+      "fallback_line": "Now that I couldn't tell you. Another drink while you think on it?"
+    }
+  ],
+
+  "clues": [
+    {"id": "C1", "kind": "method", "found_at_place": "quay", "keywords": ["cut clean", "pins"],
+     "text": "The winch cable was cut clean, and the pins were knocked loose."},
+    {"id": "C2", "kind": "motive", "found_at_place": null, "keywords": ["town meeting", "smaller catch"],
+     "text": "Tom spoke loudly against dredging at last week's town meeting (\"bigger ships, smaller catch\")."},
+    {"id": "C3", "kind": "opportunity", "found_at_place": null, "keywords": ["limp", "lantern"],
+     "text": "A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market."},
+    {"id": "C4", "kind": "opportunity", "found_at_place": null, "keywords": ["skiff"],
+     "text": "A small unlit skiff left the fish market dock around 1:30 and returned around 2:30."},
+    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["bolt cutters", "cutters"],
+     "text": "Ysolde sold bolt cutters to Tom two days ago, paid in fish."},
+    {"id": "C6", "kind": "opportunity", "found_at_place": null, "keywords": ["midnight", "knee"],
+     "text": "Tom left the tavern at midnight, complaining about his knee."},
+    {"id": "C7", "kind": "red_herring", "found_at_place": null, "keywords": ["unpaid", "fees", "harbor sink"],
+     "text": "Hale argued with Odrin over unpaid harbor fees and said he would \"see the harbor sink\"."},
+    {"id": "C8", "kind": "alibi", "found_at_place": null, "keywords": ["never left the bar", "3 a.m."],
+     "text": "The tavern was lit and noisy until about 3 a.m., and Hale never left the bar."},
+    {"id": "C9", "kind": "motive", "found_at_place": null, "keywords": ["monopoly", "confess"],
+     "text": "Tom admits he cut the cable: bigger ships would end his monopoly selling to the small boats."}
+  ],
+
+  "knowledge": [
+    {"character_id": "odrin", "clue_id": "C1", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "odrin", "clue_id": "C2", "unlock_topics": ["meeting", "objection", "dredging"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "odrin", "clue_id": "C7", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "hale", "clue_id": "C2", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "hale", "clue_id": "C6", "unlock_topics": ["tom", "brask", "midnight", "knee"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "hale", "clue_id": "C7", "unlock_topics": [], "min_trust": 2, "related_clues": [], "unlock_if_shown": ["C7"]},
+    {"character_id": "mira", "clue_id": "C3", "unlock_topics": ["night", "lantern", "quay"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "mira", "clue_id": "C8", "unlock_topics": ["tavern", "hale"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "bram", "clue_id": "C4", "unlock_topics": ["light", "water", "boat", "night"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "ysolde", "clue_id": "C5", "unlock_topics": [], "min_trust": 1, "related_clues": ["C1"], "unlock_if_shown": []},
+    {"character_id": "tom", "clue_id": "C9", "unlock_topics": [], "min_trust": 2, "related_clues": ["C3", "C4", "C5", "C6"], "unlock_if_shown": ["C3", "C5"]}
+  ],
+
+  "pointers": [
+    {"character_id": "odrin", "clue_id": "C3", "points_to_character": "mira", "misleading": false, "line": "Ask Mira. She's up all hours."},
+    {"character_id": "odrin", "clue_id": "C7", "points_to_character": "hale", "misleading": true, "line": "If anyone wished this harbor ill, it's Hale Pruitt."},
+    {"character_id": "mira", "clue_id": "C4", "points_to_character": "bram", "misleading": false, "line": "Ask Bram. The lighthouse sees the water."},
+    {"character_id": "bram", "clue_id": "C5", "points_to_character": "ysolde", "misleading": false, "line": "Anyone cutting a cable needed cutters. Ysolde sells them."},
+    {"character_id": "hale", "clue_id": "C2", "points_to_character": "odrin", "misleading": false, "line": "Odrin chaired that meeting. He'll tell you who shouted loudest."}
+  ],
+
+  "solution": {
+    "culprit_id": "tom",
+    "motive": "Bigger ships would end his monopoly selling to the small boats.",
+    "method": "He cut the cable with bolt cutters bought from Ysolde.",
+    "required_clue_ids": ["C2", "C3", "C4", "C5", "C6"],
+    "min_supporting": 2,
+    "true_timeline": [
+      "00:00 Tom leaves the tavern.",
+      "01:30 He takes the skiff from the fish market dock.",
+      "About 01:45 he cuts the cable.",
+      "About 02:00 he walks back along the quay with a lantern.",
+      "02:30 The skiff returns.",
+      "03:00 The tavern closes."
+    ]
+  },
+
+  "nudge_order": ["C2", "C3", "C4", "C5", "C6"]
+}
