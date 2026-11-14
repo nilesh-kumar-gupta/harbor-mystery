@@ -175,14 +175,16 @@ def test_case_tables_hold_the_loaded_case(ctx, case):
 
 def test_play_refuses_an_existing_database(case, tmp_path, capsys):
     db = tmp_path / "run.sqlite"
-    assert play_loop(case, 0, str(db), lines=["look"], out=lambda *_: None) == 0
-    assert play_loop(case, 0, str(db), lines=["look"], out=lambda *_: None) == 1
+    quiet = dict(out=lambda *_: None, traces_dir=tmp_path)
+    assert play_loop(case, 0, str(db), lines=["look"], **quiet) == 0
+    assert play_loop(case, 0, str(db), lines=["look"], **quiet) == 1
+    assert len(list(tmp_path.glob("*.jsonl"))) == 1
     assert "already exists" in capsys.readouterr().err
 
 
 def test_plain_play_loop(case):
     printed = []
-    lines = ["look", "dance", "go lighthouse", "go to the chandlery", "notebook", "quit", "look"]
+    lines = ["look", "dance", "dance", "go lighthouse", "go to the chandlery", "notebook", "quit", "look"]
     assert play_loop(case, 0, ":memory:", lines=lines, out=printed.append) == 0
     text = "\n".join(printed)
     assert "You notice: The winch cable was cut clean" in text
@@ -190,3 +192,15 @@ def test_plain_play_loop(case):
     assert "(no exit from Harbor Quay to Lighthouse) Exits:" in text
     assert "You walk to Chandlery. [06:15] Here: Ysolde Crane." in text
     assert "C1  The winch cable" in text
+    assert "You walk to Chandlery. [06:15]" in text   # the typos cost no time
+
+
+def test_plain_play_loop_is_traced_per_turn(case, tmp_path):
+    db = tmp_path / "run.sqlite"
+    play_loop(case, 0, str(db), lines=["look", "dance", "go office"], out=lambda *_: None,
+              traces_dir=tmp_path)
+    from harbor.engine.schema import connect
+    rows = connect(str(db)).execute("SELECT trace_id, name FROM spans ORDER BY span_id").fetchall()
+    turns = [(r["trace_id"].rsplit("-", 1)[1], r["name"]) for r in rows]
+    assert turns == [("setup", "start_run"), ("t0001", "look"), ("t0001", "end_turn"),
+                     ("t0002", "go"), ("t0002", "end_turn")]

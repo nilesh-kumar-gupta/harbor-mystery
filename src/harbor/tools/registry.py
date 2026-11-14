@@ -1,9 +1,10 @@
 """The tool registry: name -> function + JSON schema, and the one way to call a tool.
 
 `Registry.call` is the only door into the engine. It checks the caller may use
-the tool, checks the arguments against the schema, opens the write guard, and
-turns any exception into an error value (rolling back what the call wrote), so
-an agent never sees a traceback and an error always means nothing changed.
+the tool, checks the arguments against the schema, opens a tool_call span and
+the write guard, and turns any exception into an error value (rolling back what
+the call wrote), so an agent never sees a traceback and an error always means
+nothing changed.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any, Callable
 
 from harbor.engine import rules, state
 from harbor.engine.state import Game
+from harbor.tracing import Tracer
 
 AUDIENCES = ("gm", "npc", "engine")  # engine steps are never offered to a model
 _JSON_TYPES = {"string": str, "array": list, "integer": int, "object": dict}
@@ -20,9 +22,20 @@ _JSON_TYPES = {"string": str, "array": list, "integer": int, "object": dict}
 
 @dataclass
 class Context:
-    """What a tool function receives: the run, and (later milestones) its collaborators."""
+    """What a tool function receives: the run and its collaborators."""
 
     game: Game
+    tracer: Tracer | None = None  # filled in below, so no call can run untraced
+
+    def __post_init__(self) -> None:
+        if self.tracer is None:
+            self.tracer = Tracer(self.game.conn, self.game.run_id)
+
+    def begin_turn(self) -> int:
+        """Start the trace for the current turn. Returns the turn number."""
+        turn = state.read(self.game)["turn"]
+        self.tracer.begin_trace(f"t{turn:04d}")
+        return turn
 
 
 @dataclass(frozen=True)
@@ -68,26 +81,38 @@ class Registry:
                 for t in self._tools.values() if t.audience == audience]
 
     def call(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
-        """Run one tool for a caller of the given audience.
+        """Run one tool for a caller of the given audience, inside a tool_call span.
 
         Never raises: every failure comes back as {"ok": false, "error": ...}. A call
         is all or nothing: if the tool fails or returns an error value, whatever it
-        wrote is rolled back, so an error always means "nothing changed".
+        wrote is rolled back, so an error always means "nothing changed". Spans are
+        not lost by a rollback: the tracer writes them once the root span closes.
         """
         game = ctx.game
-        savepoint = f"tool_{game.tool_depth}"
-        game.conn.execute(f"SAVEPOINT {savepoint}")
-        game.tool_depth += 1
         try:
-            result = self._run(ctx, name, arguments, audience)
-        except Exception as e:  # errors are values: the model must be able to recover
-            result = error(f"internal error in {name}: {type(e).__name__}: {e}")
-        finally:
-            game.tool_depth -= 1
-        if not result.get("ok"):
-            game.conn.execute(f"ROLLBACK TO {savepoint}")
-        game.conn.execute(f"RELEASE {savepoint}")
-        return result
+            st = state.read(game)
+        except Exception:  # an unreadable database is still reported as a value below
+            st = None
+        attrs = {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": str(name),
+                 "game.turn": st["turn"] if st else 0, "game.audience": audience}
+        with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs) as span:
+            savepoint = f"tool_{game.tool_depth}"
+            game.conn.execute(f"SAVEPOINT {savepoint}")
+            outer_span, game.span_id = game.span_id, span.span_id
+            game.tool_depth += 1
+            try:
+                result = self._run(ctx, name, arguments, audience)
+            except Exception as e:  # errors are values: the model must be able to recover
+                result = error(f"internal error in {name}: {type(e).__name__}: {e}")
+            finally:
+                game.tool_depth -= 1
+                game.span_id = outer_span
+            if not result.get("ok"):
+                game.conn.execute(f"ROLLBACK TO {savepoint}")
+            game.conn.execute(f"RELEASE {savepoint}")
+            span.output = result
+            span.status = "ok" if result.get("ok") else "error"
+            return result
 
     def _run(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
         tool = self._tools.get(name) if isinstance(name, str) else None

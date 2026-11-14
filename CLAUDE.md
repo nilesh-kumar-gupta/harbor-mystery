@@ -41,4 +41,4 @@ The owner writes prose, data and judgement calls; Claude writes code and tests. 
 
 ## Status
 
-M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, plain `harbor play` loop). Build decisions are in `docs/adr/002-build-decisions.md`. Next: M2, tracing and the model interface.
+M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, plain `harbor play` loop). M2 done (`tracing.span()` writing the spans table and `traces/<run_id>.jsonl`, `LLMClient`, `ScriptedLLM`, every tool call in a span). Build decisions are in `docs/adr/002-build-decisions.md`. Next: M3, agents and `talk`.

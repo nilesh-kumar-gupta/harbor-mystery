@@ -16,6 +16,7 @@ from harbor.commands import HELP, parse_command, render
 from harbor.engine import state
 from harbor.engine.case_loader import CaseError, load_case
 from harbor.tools import REGISTRY, Context
+from harbor.tracing import Tracer
 
 DEFAULT_CASE = Path("cases/saltmere.json")
 
@@ -47,7 +48,8 @@ def main(argv: list[str] | None = None) -> int:
     return play_loop(case, args.seed, args.db)
 
 
-def play_loop(case, seed: int, db: str | None, lines=None, out=print) -> int:
+def play_loop(case, seed: int, db: str | None, lines=None, out=print,
+              traces_dir: Path = Path("traces")) -> int:
     """The plain game loop: one typed command is one turn. `lines` defaults to stdin."""
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-s{seed}"
     if db is None:
@@ -56,8 +58,9 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print) -> int:
     if db != ":memory:" and Path(db).exists():
         print(f"{db} already exists; choose another --db path", file=sys.stderr)
         return 1
-    ctx = Context(game=state.new_game(case, run_id, seed=seed, db_path=db,
-                                      git_commit=_git_commit()))
+    game = state.new_game(case, run_id, seed=seed, db_path=db, git_commit=_git_commit())
+    jsonl = None if db == ":memory:" else Path(traces_dir) / f"{run_id}.jsonl"
+    ctx = Context(game=game, tracer=Tracer(game.conn, run_id, jsonl))
     REGISTRY.call(ctx, "start_run", {}, "engine")
     out(f"{case.title}\n{case.premise}\n{HELP}")
     for line in (lines if lines is not None else _stdin_lines()):
@@ -70,10 +73,11 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print) -> int:
             out(HELP)
             continue
         command = parse_command(line)
-        if command is None:
+        if command is None:  # a typo is not a turn: no time, no stuck counter
             out("(not a command) " + HELP)
-        else:
-            out(render(command[0], REGISTRY.call(ctx, command[0], command[1], "gm")))
+            continue
+        ctx.begin_turn()
+        out(render(command[0], REGISTRY.call(ctx, command[0], command[1], "gm")))
         closing = REGISTRY.call(ctx, "end_turn", {}, "engine")
         if closing.get("status") == "ended":
             out(f"The day is over ({closing.get('result')}).")
