@@ -1,7 +1,7 @@
 {
   "case_id": "clover",
   "title": "A Spoonful of Outrage",
-  "premise": "At the county honey competition, the grand prize jar has been replaced with treacle. Nobody is ill, but the judges are furious. Find who made the substitution and why before the public tasting begins. The competitors and staff remained on site after yesterday evening's judging rehearsal.",
+  "premise": "At the county honey competition, the grand prize jar has been replaced with treacle. Nobody is ill, but the judges are furious. Find who made the substitution and why before the public tasting begins. The competitors and staff remained on site after yesterday evening's judging rehearsal. The winning entrant, Oswald Pike, has gone to fetch his family. Dax, whose entry placed second, publicly demanded that Oswald be disqualified.",
   "start_place": "hall",
   "start_clock": "08:00",
   "end_clock": "18:00",
@@ -37,7 +37,7 @@
       "id": "ada",
       "name": "Ada Pym",
       "role": "competition secretary",
-      "persona": "She treats a village gathering as a diplomatic summit and believes proper procedure can calm any quarrel.",
+      "persona": "She treats competition administration as a diplomatic summit, tapping a silver pencil against her clipboard when procedure breaks down.",
       "speech_style": "Complete sentences, elaborate courtesy, tiny corrections.",
       "start_place": "hall",
       "schedule": [],
@@ -47,8 +47,8 @@
       "id": "bert",
       "name": "Bert Quill",
       "role": "confectioner",
-      "persona": "He loves an audience and is ashamed of how far his indignation carried him. He dislikes cruelty to small creatures.",
-      "speech_style": "Food comparisons, theatrical sighs, then surprisingly plain admissions.",
+      "persona": "He says he spent the evening preparing sweets for the visitors and that kitchen deliveries are routine. He polishes his brass sugar thermometer whenever questions become personal.",
+      "speech_style": "Food comparisons, theatrical sighs, elaborate assurances about ordinary kitchen business.",
       "start_place": "pantry",
       "schedule": [],
       "fallback_line": "Give me a moment to collect myself."
@@ -57,7 +57,7 @@
       "id": "cleo",
       "name": "Cleo Marsh",
       "role": "junior steward",
-      "persona": "She is proud of her first paid job and distinguishes what she saw from what she merely thinks.",
+      "persona": "She is proud of her first paid job and distinguishes what she saw from what she merely thinks. She straightens her oversized steward badge before answering.",
       "speech_style": "Short observations followed by careful qualifications.",
       "start_place": "hall",
       "schedule": [],
@@ -66,8 +66,8 @@
     {
       "id": "dax",
       "name": "Dax Venn",
-      "role": "beekeeper",
-      "persona": "He is patient with bees and impatient with people who pretend expertise. He will acknowledge an error without ceremony.",
+      "role": "show apiary steward and runner-up",
+      "persona": "He is the show apiary steward and also a disappointed entrant. He rolls an unlit smoker between his palms and insists that his rival received preferential treatment.",
       "speech_style": "Dry remarks and direct answers with no social padding.",
       "start_place": "garden",
       "schedule": [],
@@ -77,14 +77,13 @@
   "clues": [
     {
       "id": "C1",
-      "text": "The tamper strip carries a thumbprint in violet confectionery dye. Cleo watched Bert Quill stain that thumb while making sweets; the strip was clean when she sealed the genuine jar at 20:00.",
+      "text": "The tamper strip carries a violet thumbprint. The stain crosses the torn edge; beneath the seal the paper is clean.",
       "kind": "method",
       "keywords": [
-        "violet confectionery"
+        "thumbprint",
+        "violet"
       ],
-      "implicates": [
-        "bert"
-      ],
+      "implicates": [],
       "found_at_place": "hall"
     },
     {
@@ -92,7 +91,8 @@
       "text": "Bert Quill signed a carbon delivery slip for one jar of black treacle at 20:10, after the genuine entry had been sealed. The empty delivery carton is under his bench.",
       "kind": "opportunity",
       "keywords": [
-        "carbon delivery"
+        "delivery slip",
+        "empty delivery carton"
       ],
       "implicates": [
         "bert"
@@ -101,10 +101,11 @@
     },
     {
       "id": "C3",
-      "text": "Bert Quill says he substituted the jar to force a public inspection: the winning entrant had been feeding bees a prohibited stimulant. He wanted a scandal, not the prize.",
+      "text": "Bert Quill admits he substituted the jar to force a public inspection of Oswald Pike's bee feed. He says the prohibited stimulant in it mattered more to him than the prize. The substance was BX-4.",
       "kind": "motive",
       "keywords": [
-        "prohibited stimulant"
+        "stimulant",
+        "public inspection"
       ],
       "implicates": [
         "bert"
@@ -113,10 +114,11 @@
     },
     {
       "id": "C4",
-      "text": "The retained control sample contains the banned additive. Ada agrees the entry must be withdrawn regardless of who interfered with it.",
-      "kind": "method",
+      "text": "The retained control sample from Oswald Pike's entry tests positive for a banned additive: the laboratory sheet identifies it as BX-4 in his bee feed.",
+      "kind": "motive",
       "keywords": [
-        "retained control"
+        "control sample",
+        "banned additive"
       ],
       "implicates": [],
       "found_at_place": null
@@ -126,7 +128,8 @@
       "text": "A sticky teaspoon fits the narrow opening of the replacement container; Bert Quill borrowed that exact utensil after the rehearsal and has not returned it.",
       "kind": "method",
       "keywords": [
-        "sticky teaspoon"
+        "teaspoon",
+        "narrow opening"
       ],
       "implicates": [
         "bert"
@@ -135,92 +138,178 @@
     },
     {
       "id": "C6",
-      "text": "The original honey is intact inside a biscuit tin bearing Bert Quill's handwritten instruction: keep for the inspector, do not serve.",
+      "text": "The original honey is intact inside a biscuit tin with a pencilled instruction: keep for the inspector, do not serve. There is no signature.",
       "kind": "method",
       "keywords": [
-        "biscuit tin"
+        "biscuit tin",
+        "keep for the inspector"
+      ],
+      "implicates": [],
+      "found_at_place": "pantry"
+    },
+    {
+      "id": "C7",
+      "text": "Cleo saw Bert Quill stain his right thumb with purple sugar colour at 20:05. At 20:00 she had sealed the genuine entry with unmarked paper.",
+      "kind": "opportunity",
+      "keywords": [
+        "purple sugar",
+        "unmarked paper"
       ],
       "implicates": [
         "bert"
       ],
-      "found_at_place": "pantry"
+      "found_at_place": null
+    },
+    {
+      "id": "C8",
+      "text": "Dax demanded the winner lose his rosette, saying he would see the judges embarrassed before morning. He had collected the display keys for closing.",
+      "kind": "red_herring",
+      "keywords": [
+        "rosette",
+        "display keys"
+      ],
+      "implicates": [
+        "dax"
+      ],
+      "found_at_place": null
+    },
+    {
+      "id": "C9",
+      "text": "The gate register records Dax supervising a continuous hive demonstration from 20:00 to 20:30. Ada countersigned each five-minute attendance box; the hall was locked at 20:20.",
+      "kind": "alibi",
+      "keywords": [
+        "gate register",
+        "attendance box"
+      ],
+      "implicates": [],
+      "found_at_place": null
     }
   ],
   "knowledge": [
     {
-      "character_id": "cleo",
-      "clue_id": "C1",
-      "unlock_topics": [],
+      "character_id": "ada",
+      "clue_id": "C2",
       "min_trust": 0,
+      "unlock_topics": [],
       "related_clues": [],
       "unlock_if_shown": []
     },
     {
       "character_id": "ada",
-      "clue_id": "C2",
-      "unlock_topics": [],
+      "clue_id": "C8",
       "min_trust": 0,
+      "unlock_topics": [
+        "dax",
+        "rival",
+        "last night"
+      ],
       "related_clues": [],
       "unlock_if_shown": []
     },
     {
-      "character_id": "bert",
-      "clue_id": "C3",
-      "unlock_topics": [],
-      "min_trust": 1,
-      "related_clues": [],
-      "unlock_if_shown": []
-    },
-    {
-      "character_id": "dax",
-      "clue_id": "C4",
-      "unlock_topics": [],
+      "character_id": "cleo",
+      "clue_id": "C7",
       "min_trust": 0,
+      "unlock_topics": [],
       "related_clues": [],
       "unlock_if_shown": []
     },
     {
       "character_id": "cleo",
       "clue_id": "C5",
-      "unlock_topics": [],
       "min_trust": 0,
+      "unlock_topics": [],
       "related_clues": [],
       "unlock_if_shown": []
     },
     {
       "character_id": "bert",
-      "clue_id": "C6",
-      "unlock_topics": [],
+      "clue_id": "C3",
+      "min_trust": 2,
+      "unlock_topics": [
+        "inspection",
+        "feed",
+        "last night",
+        "inspector"
+      ],
+      "related_clues": [
+        "C2",
+        "C7"
+      ],
+      "unlock_if_shown": [
+        "C2",
+        "C7"
+      ]
+    },
+    {
+      "character_id": "dax",
+      "clue_id": "C4",
+      "min_trust": 1,
+      "unlock_topics": [
+        "feed",
+        "sample",
+        "last night"
+      ],
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "ada",
+      "clue_id": "C9",
       "min_trust": 0,
+      "unlock_topics": [
+        "register",
+        "alibi",
+        "dax"
+      ],
       "related_clues": [],
       "unlock_if_shown": []
     }
   ],
-  "pointers": [],
+  "pointers": [
+    {
+      "character_id": "ada",
+      "clue_id": "C7",
+      "points_to_character": "cleo",
+      "misleading": false,
+      "line": "Ask Cleo about closing time."
+    },
+    {
+      "character_id": "cleo",
+      "clue_id": "C4",
+      "points_to_character": "dax",
+      "misleading": false,
+      "line": "Ask Dax about the judging."
+    },
+    {
+      "character_id": "dax",
+      "clue_id": "C9",
+      "points_to_character": "ada",
+      "misleading": false,
+      "line": "Ask Ada where I spent the evening."
+    }
+  ],
   "solution": {
     "culprit_id": "bert",
     "motive": "Force inspection of an entrant who was mistreating bees with a banned additive.",
     "method": "Replace the sealed honey entry with delivered treacle and keep the original for inspection.",
     "required_clue_ids": [
-      "C1",
       "C2",
-      "C3",
-      "C5",
-      "C6"
+      "C7"
     ],
-    "min_supporting": 1,
+    "min_supporting": 2,
     "true_timeline": [
-      "19:50 Bert learns what the entrant has been feeding the bees.",
+      "19:50 Bert learns that Oswald Pike has been feeding BX-4 to his bees.",
       "20:00 Cleo seals the genuine entry with a clean strip.",
       "20:10 Bert receives treacle and borrows the utensil.",
       "20:15 Bert exchanges the contents, marks the strip and saves the original honey."
     ]
   },
   "nudge_order": [
-    "C1",
+    "C7",
     "C2",
     "C3",
     "C5",
-    "C6"
+    "C4"
   ]
 }
