@@ -279,3 +279,11 @@ Parallel sets: wave A (T01, T02, T03, T04); wave C (T06, T07, T08); wave D (T09,
 6. **Who installs: (b), the owner** runs the install commands. M7-T12 prepares and documents them and checks the result after the owner runs them; it does not run `marketplace add` or `install` itself.
 7. Agent models: (a), game master on the session model, NPC `sonnet`, referee `haiku`.
 8. `resume_game`: (a), as recommended.
+
+### Decisions from building M7-T10 (2026-11-15)
+
+- **DRAFT marker:** in agent and command files it is the first line after the frontmatter, not line 1. A comment on line 1 stops the frontmatter parsing, and Claude Code then loads the agent with every field ignored, which would drop the NPC and referee tool allowlists. Supersedes the line-1 wording in §2.9 and §5.
+- **Strict validation (owner):** the plugin stays at the repo root. The acceptance check is that `claude plugin validate --strict` reports no finding other than "CLAUDE.md at the plugin root is not loaded as project context" (the repo's own developer notes, harmless for the plugin).
+- **Permissions (owner):** the install steps tell the owner to add an allow rule for `mcp__plugin_harbor-mystery_harbor__*` to their user settings. Without it every game tool asks for approval, and a `submit_draft` prompt shows an unchecked NPC draft.
+- **Foreground subagents (owner):** the install steps start Claude Code for play with background tasks disabled, so each conversation runs the NPC and then the referee in order.
+- **Known limit of launch mode (b):** in a plain session the player can open a subagent's transcript and read the NPC's knowledge and drafts. Spoiler protection there is by convention, like the game master's restraint from reading `cases/`.
