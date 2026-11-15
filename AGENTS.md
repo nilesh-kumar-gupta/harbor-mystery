@@ -5,7 +5,7 @@ You are an implementer on Harbor Mystery, a terminal detective game used as a te
 ## Where you work
 - Only in your own git worktree: `/Users/nileshgupta/Projects/text-rpg-codex`. Never edit files in `/Users/nileshgupta/Projects/text-rpg`, which is the supervisor's working tree, except your own files under its `.coord/reports/`.
 - One branch per task, named `codex/<task id>`, created from the base commit named in the task spec: `git switch -c codex/M7-T03 <base commit>`.
-- Never commit to `main`, never merge, never rebase shared branches, never push, never tag.
+- Never commit to `main`, never merge anything into `main` or any branch other than your current task branch, never rebase, never push, never tag. The one merge you may do: `git merge main` into your own current task branch (`codex/<task id>`), and only when the task spec or a review explicitly asks for it. Resolve conflicts as the spec or review says; if it gives no instruction for a conflict, abort the merge (`git merge --abort`) and report `blocked`.
 - The virtualenv in your worktree (`.venv`) is set up by the supervisor; your sandbox may have no network. Do not reinstall it.
 
 ## The task board
