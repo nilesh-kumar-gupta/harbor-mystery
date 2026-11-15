@@ -1,1 +1,1 @@
-"""Hand-written agent loops: game master and NPC. (M3)"""
+"""Hand-written agent loops: the game master and the NPCs. They never touch the database."""

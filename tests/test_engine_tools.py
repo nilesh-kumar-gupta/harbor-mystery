@@ -200,7 +200,10 @@ def test_plain_play_loop_is_traced_per_turn(case, tmp_path):
     play_loop(case, 0, str(db), lines=["look", "dance", "go office"], out=lambda *_: None,
               traces_dir=tmp_path)
     from harbor.engine.schema import connect
-    rows = connect(str(db)).execute("SELECT trace_id, name FROM spans ORDER BY span_id").fetchall()
+    rows = connect(str(db)).execute("SELECT trace_id, name FROM spans ORDER BY rowid").fetchall()
     turns = [(r["trace_id"].rsplit("-", 1)[1], r["name"]) for r in rows]
-    assert turns == [("setup", "start_run"), ("t0001", "look"), ("t0001", "end_turn"),
-                     ("t0002", "go"), ("t0002", "end_turn")]
+    assert turns == [("setup", "start_run"),
+                     ("t0001", "game_master"), ("t0001", "chat"), ("t0001", "look"),
+                     ("t0001", "chat"), ("t0001", "end_turn"),
+                     ("t0002", "game_master"), ("t0002", "chat"), ("t0002", "go"),
+                     ("t0002", "chat"), ("t0002", "end_turn")]

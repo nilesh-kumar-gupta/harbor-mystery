@@ -12,11 +12,10 @@ import sys
 import time
 from pathlib import Path
 
-from harbor.commands import HELP, parse_command, render
-from harbor.engine import state
+from harbor.commands import HELP, parse_command, render_ending
 from harbor.engine.case_loader import CaseError, load_case
-from harbor.tools import REGISTRY, Context
-from harbor.tracing import Tracer
+from harbor.offline import offline_llms
+from harbor.session import Session, hosted_llms
 
 DEFAULT_CASE = Path("cases/saltmere.json")
 
@@ -29,6 +28,9 @@ def main(argv: list[str] | None = None) -> int:
     play = sub.add_parser("play", help="play in the terminal by typing commands")
     play.add_argument("--case", type=Path, default=DEFAULT_CASE)
     play.add_argument("--seed", type=int, default=0)
+    play.add_argument("--hosted", action="store_true",
+                      help="use the hosted model (HARBOR_MODEL, ANTHROPIC_API_KEY) for the "
+                           "game master and the characters; default is offline")
     play.add_argument("--db", default=None,
                       help="run database path (default runs/<run_id>.sqlite; "
                            "':memory:' keeps nothing)")
@@ -45,12 +47,22 @@ def main(argv: list[str] | None = None) -> int:
             f"{len(case.characters)} characters, {len(case.clues)} clues. OK"
         )
         return 0
-    return play_loop(case, args.seed, args.db)
+    return play_loop(case, args.seed, args.db, hosted=args.hosted)
 
 
 def play_loop(case, seed: int, db: str | None, lines=None, out=print,
-              traces_dir: Path = Path("traces")) -> int:
-    """The plain game loop: one typed command is one turn. `lines` defaults to stdin."""
+              traces_dir: Path = Path("traces"), hosted: bool = False, llms=None) -> int:
+    """The game loop: one line is one turn for the game master. `lines` defaults to stdin.
+
+    Offline (the default) the game master and characters are deterministic
+    stand-ins that understand typed commands; `hosted` uses the real model.
+    """
+    if llms is None:
+        try:
+            llms = hosted_llms() if hosted else offline_llms()
+        except Exception as e:
+            print(f"cannot start the hosted model: {e}", file=sys.stderr)
+            return 1
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-s{seed}"
     if db is None:
         Path("runs").mkdir(exist_ok=True)
@@ -61,9 +73,8 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
             print(f"{path} already exists; try again or choose another --db path",
                   file=sys.stderr)
             return 1
-    game = state.new_game(case, run_id, seed=seed, db_path=db, git_commit=_git_commit())
-    ctx = Context(game=game, tracer=Tracer(game.conn, run_id, jsonl))
-    REGISTRY.call(ctx, "start_run", {}, "engine")
+    session = Session.create(case, run_id, llms, seed=seed, db_path=db, jsonl_path=jsonl,
+                             git_commit=_git_commit())
     out(f"{case.title}\n{case.premise}\n{HELP}")
     for line in (lines if lines is not None else _stdin_lines()):
         line = line.strip()
@@ -74,15 +85,14 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
         if line.lower() in ("help", "?"):
             out(HELP)
             continue
-        command = parse_command(line)
-        if command is None:  # a typo is not a turn: no time, no stuck counter
+        if not hosted and parse_command(line) is None:  # offline, a typo is not a turn
             out("(not a command) " + HELP)
             continue
-        ctx.begin_turn()
-        out(render(command[0], REGISTRY.call(ctx, command[0], command[1], "gm")))
-        closing = REGISTRY.call(ctx, "end_turn", {}, "engine")
-        if closing.get("status") == "ended":
-            out(f"The day is over ({closing.get('result')}).")
+        result = session.turn(line)
+        out(result.narration)
+        if result.status == "ended":
+            if result.end.get("result") == "timeout":
+                out(f"The day is over (timeout).\n{render_ending(result.end)}")
             break
     return 0
 

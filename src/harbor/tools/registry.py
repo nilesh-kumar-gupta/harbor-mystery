@@ -9,6 +9,7 @@ nothing changed.
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -21,11 +22,24 @@ _JSON_TYPES = {"string": str, "array": list, "integer": int, "object": dict}
 
 
 @dataclass
+class Draft:
+    """What an NPC runner hands back to `talk`: a reply not yet accepted."""
+
+    text: str
+    capped: bool = False  # the agent hit its tool-call limit
+
+
+@dataclass
 class Context:
-    """What a tool function receives: the run and its collaborators."""
+    """What a tool function receives: the run and its collaborators.
+
+    `npc_runner(ctx, card, message, note) -> Draft` is the NPC agent, passed in
+    so that `tools` never imports `agents`.
+    """
 
     game: Game
     tracer: Tracer | None = None  # filled in below, so no call can run untraced
+    npc_runner: Callable[..., Draft] | None = None
 
     def __post_init__(self) -> None:
         # one tracer per run, so span ids never collide between contexts
@@ -98,7 +112,7 @@ class Registry:
         attrs = {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": str(name),
                  "game.turn": st["turn"] if st else 0, "game.audience": audience}
         with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs) as span:
-            savepoint = f"tool_{game.tool_depth}"
+            savepoint = f"tool_{next(_savepoints)}"
             game.conn.execute(f"SAVEPOINT {savepoint}")
             outer_span, game.span_id = game.span_id, span.span_id
             game.tool_depth += 1
@@ -159,4 +173,5 @@ def _check_arguments(schema: dict, arguments: Any) -> str | None:
     return None
 
 
+_savepoints = itertools.count(1)
 REGISTRY = Registry()

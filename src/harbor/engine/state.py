@@ -6,6 +6,7 @@ event log stays complete; nothing here writes a run table directly.
 
 from __future__ import annotations
 
+import json
 import random
 import sqlite3
 from dataclasses import dataclass, field
@@ -132,3 +133,59 @@ def finish_turn(game: Game, turns_since_new_clue: int, nudge_cleared: bool) -> N
 
 def end_game(game: Game, result: str, details: dict | None = None) -> None:
     events.record(game, "game_ended", {"result": result, **(details or {})})
+
+
+# ---- conversations and trust (M3) -------------------------------------------
+
+def trust_of(game: Game, character_id: str) -> int:
+    return game.conn.execute(
+        "SELECT level FROM trust WHERE run_id = ? AND character_id = ?",
+        (game.run_id, character_id)).fetchone()[0]
+
+
+def conversation(game: Game, character_id: str) -> list[sqlite3.Row]:
+    """Today's lines between the player and one character, oldest first."""
+    return game.conn.execute(
+        "SELECT turn, speaker, text FROM conversations "
+        "WHERE run_id = ? AND character_id = ? ORDER BY id", (game.run_id, character_id),
+    ).fetchall()
+
+
+def player_lines(game: Game, character_id: str) -> list[str]:
+    return [r["text"] for r in conversation(game, character_id) if r["speaker"] == "player"]
+
+
+def spoken_to(game: Game) -> set[str]:
+    rows = game.conn.execute(
+        "SELECT DISTINCT character_id FROM conversations WHERE run_id = ?", (game.run_id,))
+    return {r["character_id"] for r in rows}
+
+
+def events_of(game: Game, type: str, since_last: str | None = None) -> list[dict]:
+    """Payloads of this run's events of one type, optionally only those after the
+    latest event of type `since_last`."""
+    floor = 0
+    if since_last:
+        floor = game.conn.execute(
+            "SELECT COALESCE(MAX(seq), 0) FROM events WHERE run_id = ? AND type = ?",
+            (game.run_id, since_last)).fetchone()[0]
+    rows = game.conn.execute(
+        "SELECT payload FROM events WHERE run_id = ? AND type = ? AND seq > ? ORDER BY seq",
+        (game.run_id, type, floor)).fetchall()
+    return [json.loads(r["payload"]) for r in rows]
+
+
+def start_talk(game: Game, character_id: str) -> None:
+    events.record(game, "talk_started", {"character": character_id})
+
+
+def say(game: Game, character_id: str, speaker: str, text: str) -> None:
+    events.record(game, "line_said",
+                  {"character": character_id, "speaker": speaker, "text": text})
+
+
+def change_trust(game: Game, character_id: str, to: int, reason: str,
+                 clue_id: str | None = None) -> None:
+    events.record(game, "trust_changed", {
+        "character": character_id, "from": trust_of(game, character_id), "to": to,
+        "reason": reason, "clue_id": clue_id})

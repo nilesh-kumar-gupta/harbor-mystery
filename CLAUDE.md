@@ -9,7 +9,8 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'   # first-time setup
 .venv/bin/pytest                 # offline tests (default excludes live)
 .venv/bin/pytest -m live         # model-backed checks; needs ANTHROPIC_API_KEY and HARBOR_MODEL
 .venv/bin/harbor check-case      # validate cases/saltmere.json
-.venv/bin/harbor play            # play by typing commands (no model); --seed N, --db PATH
+.venv/bin/harbor play            # play offline by typing commands; --seed N, --db PATH
+.venv/bin/harbor play --hosted   # play with the hosted model (HARBOR_MODEL, ANTHROPIC_API_KEY)
 ```
 
 ## Architecture rules (enforced by tests, do not relax)
@@ -41,4 +42,4 @@ The owner writes prose, data and judgement calls; Claude writes code and tests. 
 
 ## Status
 
-M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, plain `harbor play` loop). M2 done (`tracing.span()` writing the spans table and `traces/<run_id>.jsonl`, `LLMClient`, `ScriptedLLM`, every tool call in a span). Build decisions are in `docs/adr/002-build-decisions.md`. Next: M3, agents and `talk`.
+M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, `harbor play`). M2 done (`tracing.span()` writing the spans table and `traces/<run_id>.jsonl`, `LLMClient`, `ScriptedLLM`, every tool call in a span). M3 done (agent loop, NPC agent, game master, `talk` with the active-character rule and per-character trust, the four NPC tools, `HostedLLM`, offline stand-ins, prompt stubs; `tests/test_live_smoke.py` written but not yet run). Build decisions are in `docs/adr/002-build-decisions.md`. Next: M4, referee and hints.

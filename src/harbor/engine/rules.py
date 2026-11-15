@@ -3,6 +3,7 @@ character a name means, which exits exist, who is present, which words match."""
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 
@@ -74,3 +75,141 @@ def matches(text: str, terms) -> list[str]:
 def past_end(game: Game) -> bool:
     """True once the clock has reached the end of the day (18:00 in Saltmere)."""
     return state.read(game)["clock"] >= state.clock_minutes(state.case_meta(game)["end_clock"])
+
+
+# ---- knowledge, topics and trust (M3) ---------------------------------------
+#
+# Everything below takes the character id from the caller, and the only callers
+# are the NPC tools, which pass game_state.active_character. No model-chosen
+# value ever selects whose knowledge is read.
+
+MAX_TRUST = 2
+TRUST_REASONS = ("polite_repeat", "related_clue_shown", "rude")
+
+
+def _list(text: str) -> list[str]:
+    return json.loads(text)
+
+
+def clue(game: Game, clue_id: str) -> sqlite3.Row | None:
+    return game.conn.execute("SELECT * FROM clues WHERE id = ?", (clue_id,)).fetchone()
+
+
+def knowledge(game: Game, character_id: str) -> list[sqlite3.Row]:
+    return game.conn.execute(
+        "SELECT k.*, c.text FROM knowledge k JOIN clues c ON c.id = k.clue_id "
+        "WHERE k.character_id = ? ORDER BY k.rowid", (character_id,)).fetchall()
+
+
+def shown_clues(game: Game, text: str) -> set[str]:
+    """Notebook clues the text refers to, by clue keywords (ADR 001 #3)."""
+    found = state.found_clue_ids(game)
+    rows = game.conn.execute("SELECT id, keywords FROM clues ORDER BY rowid").fetchall()
+    return {r["id"] for r in rows if r["id"] in found and matches(text, _list(r["keywords"]))}
+
+
+def _trust_ok(game: Game, row: sqlite3.Row, character_id: str) -> bool:
+    if state.trust_of(game, character_id) >= row["min_trust"]:
+        return True
+    needed = set(_list(row["unlock_if_shown"]))
+    if not needed:
+        return False
+    said = " ".join(state.player_lines(game, character_id))  # anything shown today counts
+    return needed <= shown_clues(game, said)
+
+
+def _topic_ok(game: Game, row: sqlite3.Row, message: str) -> bool:
+    topics = _list(row["unlock_topics"])
+    return (not topics or bool(matches(message, topics))
+            or row["clue_id"] == state.read(game)["nudge_clue"])
+
+
+def _current_message(game: Game, character_id: str) -> str:
+    lines = state.player_lines(game, character_id)
+    return lines[-1] if lines else ""
+
+
+def _trust_clues_shown(game: Game, character_id: str) -> list[str]:
+    """Related clues in the current message that have not yet earned a trust step here."""
+    related = {c for row in knowledge(game, character_id) for c in _list(row["related_clues"])}
+    used = {e["clue_id"] for e in state.events_of(game, "trust_changed")
+            if e["character"] == character_id and e["reason"] == "related_clue_shown"}
+    shown = shown_clues(game, _current_message(game, character_id))
+    return sorted((shown & related) - used)
+
+
+def recall(game: Game, character_id: str) -> dict:
+    """What this character can tell the player right now: unlocked clues and pointers."""
+    message = _current_message(game, character_id)
+    found = state.found_clue_ids(game)
+    nudge = state.read(game)["nudge_clue"]
+    clues, guarded = [], False
+    for row in knowledge(game, character_id):
+        if not _topic_ok(game, row, message):
+            continue
+        if not _trust_ok(game, row, character_id):
+            guarded = guarded or row["clue_id"] not in found
+            continue
+        item = {"id": row["clue_id"], "text": row["text"]}
+        if row["clue_id"] in found:
+            item["in_notebook"] = True
+        if row["clue_id"] == nudge:
+            item["nudge"] = True
+        clues.append(item)
+    pointers = []
+    for p in game.conn.execute(
+            "SELECT p.clue_id, p.line, c.name FROM pointers p "
+            "JOIN characters c ON c.id = p.points_to_character "
+            "WHERE p.character_id = ? ORDER BY p.rowid", (character_id,)):
+        if p["clue_id"] in found:
+            continue
+        item = {"clue": p["clue_id"], "ask": p["name"], "line": p["line"]}
+        if p["clue_id"] == nudge:
+            item["nudge"] = True
+        pointers.append(item)
+    return {"clues": clues, "pointers": pointers, "guarded": guarded,
+            "trust": state.trust_of(game, character_id),
+            "shown": _trust_clues_shown(game, character_id)}
+
+
+def check_reveal(game: Game, character_id: str, clue_id: str) -> str | None:
+    """Why this character may not reveal this clue now, or None if they may."""
+    if clue(game, clue_id) is None:
+        return f"unknown clue {clue_id!r}"
+    row = next((r for r in knowledge(game, character_id) if r["clue_id"] == clue_id), None)
+    if row is None:
+        return f"you do not know clue {clue_id}"
+    if not _trust_ok(game, row, character_id):
+        return "trust too low"
+    return None
+
+
+def trust_step(game: Game, character_id: str, reason: str) -> tuple[int | None, str | None, str]:
+    """Decide a trust change. Returns (new level, clue that earned it, "") or (None, None, why not).
+
+    The model only names a reason; whether trust moves is decided here, one step
+    at most and once per conversation.
+    """
+    level = state.trust_of(game, character_id)
+    if any(e["character"] == character_id
+           for e in state.events_of(game, "trust_changed", since_last="talk_started")):
+        return None, None, "trust already changed in this conversation"
+    earlier = [e for e in state.events_of(game, "trust_changed") if e["character"] == character_id]
+    if reason == "rude":
+        if level == 0:
+            return None, None, "trust is already at its lowest"
+        return level - 1, None, ""
+    if level >= MAX_TRUST:
+        return None, None, "trust is already at its highest"
+    if reason == "polite_repeat":
+        if len(state.player_lines(game, character_id)) < 2:
+            return None, None, "the player has not asked before"
+        if any(e["reason"] == "polite_repeat" for e in earlier):
+            return None, None, "a polite repeat has already been counted"
+        return level + 1, None, ""
+    if reason == "related_clue_shown":
+        shown = _trust_clues_shown(game, character_id)
+        if not shown:
+            return None, None, "no related clue from the notebook was shown"
+        return level + 1, shown[0], ""
+    return None, None, f"unknown reason {reason!r}"
