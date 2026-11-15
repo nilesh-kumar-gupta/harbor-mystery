@@ -1,0 +1,14 @@
+{
+  "name": "harbor-mystery-local",
+  "description": "Local marketplace for playing Harbor Mystery from this repository.",
+  "owner": {
+    "name": "Nilesh Kumar Gupta"
+  },
+  "plugins": [
+    {
+      "name": "harbor-mystery",
+      "source": "./",
+      "description": "A detective game played in Claude Code, backed by a Python MCP server."
+    }
+  ]
+}
