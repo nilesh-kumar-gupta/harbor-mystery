@@ -10,7 +10,7 @@ import sqlite3
 
 CASE_TABLES = ("case_meta", "places", "exits", "characters", "clues", "knowledge",
                "pointers", "case_solution")
-RUN_TABLES = ("game_state", "trust", "notebook", "conversations", "events", "runs")
+RUN_TABLES = ("game_state", "trust", "notebook", "conversations", "events", "runs", "interactions", "attempts")
 TRACE_TABLES = ("spans", "labels")
 
 SCHEMA = """
@@ -86,6 +86,18 @@ CREATE TABLE events (
     run_id TEXT NOT NULL, turn INTEGER NOT NULL, type TEXT NOT NULL,
     payload TEXT NOT NULL,                          -- JSON object
     span_id TEXT                                    -- the tool_call span that wrote it
+);
+
+CREATE TABLE interactions (
+    run_id TEXT NOT NULL, interaction_id TEXT PRIMARY KEY, turn INTEGER NOT NULL,
+    character_id TEXT NOT NULL, player_message TEXT NOT NULL,
+    status TEXT NOT NULL, attempt INTEGER NOT NULL, reply TEXT, fallback INTEGER,
+    outcome TEXT, new_clues TEXT
+);
+CREATE TABLE attempts (
+    interaction_id TEXT NOT NULL, attempt INTEGER NOT NULL, status TEXT NOT NULL,
+    note TEXT, staged TEXT NOT NULL, draft TEXT, verdict TEXT, verdict_reason TEXT,
+    outcome TEXT, leaked TEXT, PRIMARY KEY (interaction_id, attempt)
 );
 
 CREATE TABLE spans (

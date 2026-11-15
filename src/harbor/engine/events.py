@@ -14,6 +14,8 @@ import json
 HASHED_TABLES = {
     "game_state": "clock, place, active_character, turn, turns_since_new_clue, "
                   "nudge_clue, status, result",
+    "interactions": "interaction_id, turn, character_id, player_message, status, attempt, reply, fallback, outcome, new_clues",
+    "attempts": "interaction_id, attempt, status, note, staged, draft, verdict, verdict_reason, outcome, leaked",
     "trust": "character_id, level",
     "notebook": "clue_id, source_character, place, minute, turn",
     "conversations": "character_id, turn, speaker, text",
@@ -77,6 +79,37 @@ def _apply(conn, run_id: str, turn: int, type: str, p: dict) -> None:
             _set(conn, run_id, nudge_clue=None)
     elif type == "game_ended":
         _set(conn, run_id, status="ended", result=p["result"])
+    elif type == "interaction_begun":
+        conn.execute("INSERT INTO interactions VALUES (?,?,?,?,?,'pending',1,NULL,NULL,NULL,NULL)",
+                     (run_id, p["interaction_id"], turn, p["character"], p["message"]))
+    elif type == "attempt_started":
+        conn.execute("INSERT INTO attempts VALUES (?,?,'pending',?,'[]',NULL,NULL,NULL,NULL,NULL)",
+                     (p["interaction_id"], p["attempt"], p.get("note")))
+        conn.execute("UPDATE interactions SET status='pending', attempt=? WHERE interaction_id=?",
+                     (p["attempt"], p["interaction_id"]))
+    elif type in ("npc_started", "draft_submitted"):
+        phase = "drafting" if type == "npc_started" else "evaluating"
+        conn.execute("UPDATE interactions SET status=? WHERE interaction_id=?", (phase, p["interaction_id"]))
+        conn.execute("UPDATE attempts SET status=? WHERE interaction_id=? AND attempt=?",
+                     (phase, p["interaction_id"], p["attempt"]))
+        if type == "draft_submitted":
+            conn.execute("UPDATE attempts SET draft=? WHERE interaction_id=? AND attempt=?",
+                         (p["text"], p["interaction_id"], p["attempt"]))
+    elif type == "action_staged":
+        row = conn.execute("SELECT staged FROM attempts WHERE interaction_id=? AND attempt=?",
+                           (p["interaction_id"], p["attempt"])).fetchone()
+        actions = json.loads(row[0]) + [{"action": p["action"], "args": p["args"]}]
+        conn.execute("UPDATE attempts SET staged=? WHERE interaction_id=? AND attempt=?",
+                     (json.dumps(actions, sort_keys=True), p["interaction_id"], p["attempt"]))
+    elif type == "verdict_recorded":
+        conn.execute("UPDATE attempts SET verdict=?, verdict_reason=? WHERE interaction_id=? AND attempt=?",
+                     (p["verdict"], p.get("reason", ""), p["interaction_id"], p["attempt"]))
+    elif type == "attempt_closed":
+        conn.execute("UPDATE attempts SET status='closed', outcome=?, leaked=? WHERE interaction_id=? AND attempt=?",
+                     (p["outcome"], json.dumps(p.get("leaked", [])), p["interaction_id"], p["attempt"]))
+    elif type in ("interaction_committed", "interaction_recovered"):
+        conn.execute("UPDATE interactions SET status='committed', reply=?, fallback=?, outcome=?, new_clues=? WHERE interaction_id=?",
+                     (p["reply"], int(p["fallback"]), p["outcome"], json.dumps(p["new_clues"]), p["interaction_id"]))
     elif type in ("clue_confirmed", "hint_used", "clues_shown"):
         pass  # logged for the referee and for analysis; no state of their own
     else:
@@ -109,8 +142,10 @@ def state_hash(conn, run_id: str) -> str:
     digest = hashlib.sha256()
     for table, cols in HASHED_TABLES.items():
         order = "id" if table == "conversations" else cols
+        where = ("interaction_id IN (SELECT interaction_id FROM interactions WHERE run_id = ?)"
+                 if table == "attempts" else "run_id = ?")
         rows = conn.execute(
-            f"SELECT {cols} FROM {table} WHERE run_id = ? ORDER BY {order}", (run_id,)
+            f"SELECT {cols} FROM {table} WHERE {where} ORDER BY {order}", (run_id,)
         ).fetchall()
         digest.update(json.dumps([table, [list(r) for r in rows]]).encode("utf-8"))
     return digest.hexdigest()
