@@ -1,0 +1,245 @@
+{
+  "case_id": "saffron",
+  "title": "The Water That Went Uphill",
+  "premise": "At a desert caravan rest house, forty litres have vanished from the sealed drinking reserve. The three residents agree that nobody entered or left last night. The well is dry until the next delivery. Establish who took the water, how, and for what purpose before the departing caravan is searched.",
+  "start_place": "court",
+  "start_clock": "08:00",
+  "end_clock": "18:00",
+  "places": [
+    {
+      "id": "court",
+      "name": "Central Court",
+      "description": "An awning shades empty benches. Three corridors and a stair meet beside the drinking station."
+    },
+    {
+      "id": "office",
+      "name": "Accounts Room",
+      "description": "Shelves of route books face a desk with a sand timer."
+    },
+    {
+      "id": "roof",
+      "name": "Roof Terrace",
+      "description": "The horizon shimmers beyond a parapet. A maintenance ladder leads down into the court."
+    },
+    {
+      "id": "store",
+      "name": "Supply Room",
+      "description": "Spare fittings sit in neat compartments beside the reserve tank."
+    },
+    {
+      "id": "yard",
+      "name": "Sheltered Yard",
+      "description": "Old transport crates shelter a row of covered animal pens."
+    }
+  ],
+  "exits": [
+    [
+      "court",
+      "office"
+    ],
+    [
+      "court",
+      "roof"
+    ],
+    [
+      "court",
+      "store"
+    ],
+    [
+      "court",
+      "yard"
+    ]
+  ],
+  "characters": [
+    {
+      "id": "iman",
+      "name": "Iman Rook",
+      "role": "rest house manager",
+      "persona": "She regards every traveller as a temporary responsibility. She fears that compassion without accounting will leave someone thirsty.",
+      "speech_style": "Measured questions, exact quantities, no ornamental language.",
+      "start_place": "court",
+      "schedule": [],
+      "fallback_line": "Let us establish one thing at a time."
+    },
+    {
+      "id": "nuri",
+      "name": "Nuri Bell",
+      "role": "animal courier",
+      "persona": "He speaks easily about practical work but struggles to defend a choice that endangered other people. He accepts responsibility when confronted fairly.",
+      "speech_style": "Gentle understatement, long pauses before personal matters.",
+      "start_place": "yard",
+      "schedule": [],
+      "fallback_line": "I am listening. Take your time."
+    },
+    {
+      "id": "vera",
+      "name": "Vera Holt",
+      "role": "route surveyor",
+      "persona": "She is fascinated by causes and distrusts accusations based only on temperament. She corrects her own assumptions aloud.",
+      "speech_style": "Conditional statements resolved into crisp conclusions.",
+      "start_place": "office",
+      "schedule": [],
+      "fallback_line": "A possibility is not yet an explanation."
+    }
+  ],
+  "clues": [
+    {
+      "id": "C1",
+      "text": "The metered draw was forty litres at 22:14. Nuri Bell's personal service token operated the outlet; the token stayed on his wrist throughout the evening, as both other residents independently confirm.",
+      "kind": "opportunity",
+      "keywords": [
+        "metered draw"
+      ],
+      "implicates": [
+        "nuri"
+      ],
+      "found_at_place": null
+    },
+    {
+      "id": "C2",
+      "text": "A siphon hose in the supply cupboard has a fresh splice matching the missing end of Nuri Bell's animal-watering tube. The outlet bypass requires this narrow tube; ordinary buckets cannot reach it.",
+      "kind": "method",
+      "keywords": [
+        "fresh splice"
+      ],
+      "implicates": [
+        "nuri"
+      ],
+      "found_at_place": "store"
+    },
+    {
+      "id": "C3",
+      "text": "Nuri Bell received a veterinary telegram prescribing forty litres overnight for dehydrated confiscated tortoises. His transport allotment was exhausted, and he had been refused an emergency advance.",
+      "kind": "motive",
+      "keywords": [
+        "veterinary telegram"
+      ],
+      "implicates": [
+        "nuri"
+      ],
+      "found_at_place": null
+    },
+    {
+      "id": "C4",
+      "text": "The gravity test shows the roof pipe runs into the reserve, never out of it. No water could have been taken from above without a pump, and no pump is on site.",
+      "kind": "method",
+      "keywords": [
+        "gravity test"
+      ],
+      "implicates": [],
+      "found_at_place": "roof"
+    },
+    {
+      "id": "C5",
+      "text": "The undisturbed dust around the perimeter excludes a concealed cart or a second container being brought through the boundary. This was an internal transfer, not an outside raid.",
+      "kind": "opportunity",
+      "keywords": [
+        "undisturbed dust"
+      ],
+      "implicates": [],
+      "found_at_place": null
+    },
+    {
+      "id": "C6",
+      "text": "The graduated basins hold thirty litres, and the absorbent bedding retained another ten. None is drinking stock for the caravan: the missing quantity went to the recovering animals.",
+      "kind": "method",
+      "keywords": [
+        "graduated basins"
+      ],
+      "implicates": [],
+      "found_at_place": "yard"
+    },
+    {
+      "id": "C7",
+      "text": "The outlet service record says its bypass is silent only while the kitchen fan runs, from 22:10 to 22:20. This reconciles the reported silence with the recorded withdrawal rather than contradicting it.",
+      "kind": "opportunity",
+      "keywords": [
+        "service record"
+      ],
+      "implicates": [],
+      "found_at_place": null
+    }
+  ],
+  "knowledge": [
+    {
+      "character_id": "iman",
+      "clue_id": "C1",
+      "unlock_topics": [],
+      "min_trust": 0,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "vera",
+      "clue_id": "C3",
+      "unlock_topics": [],
+      "min_trust": 1,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "nuri",
+      "clue_id": "C2",
+      "unlock_topics": [],
+      "min_trust": 1,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "vera",
+      "clue_id": "C4",
+      "unlock_topics": [],
+      "min_trust": 1,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "iman",
+      "clue_id": "C5",
+      "unlock_topics": [],
+      "min_trust": 0,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "nuri",
+      "clue_id": "C6",
+      "unlock_topics": [],
+      "min_trust": 0,
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "vera",
+      "clue_id": "C7",
+      "unlock_topics": [],
+      "min_trust": 1,
+      "related_clues": [],
+      "unlock_if_shown": []
+    }
+  ],
+  "pointers": [],
+  "solution": {
+    "culprit_id": "nuri",
+    "motive": "Keep confiscated tortoises alive after an emergency water request was refused.",
+    "method": "Use his wrist token and a spliced narrow siphon through the reserve outlet bypass while the kitchen fan masked the sound.",
+    "required_clue_ids": [
+      "C1",
+      "C2",
+      "C3"
+    ],
+    "min_supporting": 3,
+    "true_timeline": [
+      "18:00 The courier receives the treatment instruction and requests an advance.",
+      "19:00 The manager refuses because the reserve is allocated to departing travellers.",
+      "22:10 The kitchen fan starts its timed cycle.",
+      "22:14 Nuri operates the outlet with his wrist token and siphons forty litres.",
+      "22:20 The fan stops; the water is already in the animal basins and bedding."
+    ]
+  },
+  "nudge_order": [
+    "C1",
+    "C3",
+    "C2"
+  ]
+}
