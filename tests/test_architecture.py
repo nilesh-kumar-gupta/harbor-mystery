@@ -8,6 +8,7 @@ from harbor.tools import REGISTRY
 SRC = Path(__file__).parent.parent / "src" / "harbor"
 # layer -> harbor subpackages or modules it must not import
 FORBIDDEN = {
+    "mcp_server": {"agents", "engine", "cli", "bot", "offline"},
     "engine": {"agents", "tools", "llm", "cli", "referee", "bot", "session", "offline",
                "commands"},
     "tools": {"agents", "cli", "bot", "session", "offline"},
