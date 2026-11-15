@@ -33,3 +33,38 @@ def test_failing_span_write_counts_and_keeps_committed_state(ctx, monkeypatch, c
     assert state.read(ctx.game)["clock"] == 365
     assert ctx.tracer.trace_failures == 1
     assert "disk unavailable" in capsys.readouterr().err
+
+
+def test_unknown_virtual_close_counts_failure(ctx):
+    before = ctx.tracer.trace_failures
+    ctx.tracer.close_virtual("unknown")
+    assert ctx.tracer.trace_failures == before + 1
+
+
+def test_closed_virtual_cannot_reopen_and_parent_supplies_trace(ctx):
+    import pytest
+    t = ctx.tracer
+    parent = t.open_virtual("agent", "parent", "parent", trace_id="original")
+    t.begin_trace("different")
+    with t.span("tool_call", "child", parent_id=parent.span_id) as child:
+        assert child.trace_id == "original"
+    virtual = t.open_virtual("agent", "child", "virtual", parent_id=parent.span_id)
+    assert virtual.trace_id == "original"
+    t.close_virtual(virtual.span_id)
+    with pytest.raises(ValueError, match="already closed"):
+        t.open_virtual("agent", "child", "virtual")
+    t.close_virtual(parent.span_id)
+    with t.span("tool_call", "later", parent_id=parent.span_id) as child:
+        assert child.trace_id == "original"
+
+
+def test_finalize_pending_and_after_tracer_restart_commit(ctx):
+    from harbor.tracing import Tracer
+    from test_lifecycle_tools import begin, draft, finalize, call
+    ids = begin(ctx)
+    assert finalize(ctx, ids)["reason_code"] == "no_draft"
+    ids["attempt"] = 2
+    draft(ctx, ids)
+    call(ctx, "submit_verdict", "referee", **ids, verdict="OK")
+    ctx.tracer = Tracer(ctx.game.conn, ctx.game.run_id)
+    assert finalize(ctx, ids)["outcome"] == "accepted"
