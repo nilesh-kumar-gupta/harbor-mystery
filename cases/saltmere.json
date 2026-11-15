@@ -7,7 +7,7 @@
   "end_clock": "18:00",
 
   "places": [
-    {"id": "quay", "name": "Harbor Quay", "description": "A long stone quay, slick with morning damp and strung with drying nets. The hired dredger rides idle at her mooring, her winch hanging slack."},
+    {"id": "quay", "name": "Harbor Quay", "description": "A long stone quay, slick with morning damp and strung with drying nets. The dredger rides idle at her mooring, her winch hanging slack."},
     {"id": "office", "name": "Harbormaster's Office", "description": "A cramped room above the quay, all ledgers and tide tables. The stove has gone cold, and the harbormaster's chair is worn to the shape of him."},
     {"id": "fish_market", "name": "Fish Market", "description": "Trestle tables under a tarred awning, slippery with scales. Behind them is a little dock where the small boats tie up."},
     {"id": "chandlery", "name": "Chandlery", "description": "Coils of rope, casks of lamp oil and racks of iron tools, every shelf labelled in a small, careful hand."},
@@ -27,12 +27,12 @@
     {
       "id": "odrin", "name": "Odrin Vale", "role": "harbormaster", "start_place": "office", "schedule": [],
       "persona": "Harbormaster for twenty years: gruff, tired and short of sleep. Fought hard for the dredging and takes the sabotage as a personal insult.",
-      "speech_style": "Short, blunt sentences. No patience for small talk; ends most answers with a grunt.",
+      "speech_style": "Short, blunt sentences. No patience for small talk; answers with a grunt when he can.",
       "fallback_line": "I've a harbor to run, and you're standing in it. Ask me something I can answer."
     },
     {
       "id": "mira", "name": "Mira Tolle", "role": "net-mender", "start_place": "quay", "schedule": [],
-      "persona": "Warm and sleepless. Mends nets on the quay at all hours, always with one in her lap, and notices more than she lets on.",
+      "persona": "Warm and sleepless. Mends nets on the quay at all hours, always with one in her lap.",
       "speech_style": "Talks in half-finished thoughts that trail away, then circle back to where she started.",
       "fallback_line": "Oh, I... where was I? No, it's gone, I've lost the thread. These nets won't mend themselves, will they."
     },
@@ -50,13 +50,13 @@
     },
     {
       "id": "bram", "name": "Bram Oyle", "role": "lighthouse keeper", "start_place": "lighthouse", "schedule": [],
-      "persona": "Quiet and watchful. Keeps the light on the point and notices every boat and every lamp on the water.",
-      "speech_style": "Few words and long pauses; plain observations, never guesses.",
+      "persona": "Quiet and watchful. Keeps the light on the point and notices every boat and every light on the water.",
+      "speech_style": "Few words and long pauses; plain observations, no idle talk.",
       "fallback_line": "Couldn't say. I only watch the water."
     },
     {
       "id": "hale", "name": "Hale Pruitt", "role": "tavern keeper", "start_place": "salt_cask", "schedule": [],
-      "persona": "A gossip who knows everyone's business, keeps a bar that rarely closes before the small hours, and resents the harbor fees.",
+      "persona": "A gossip who knows everyone's business, resents the harbor fees; never happier than when someone else is in trouble.",
       "speech_style": "Chatty and confiding; leans across the bar as if every word were a secret.",
       "fallback_line": "Now that I couldn't tell you. Another drink while you think on it?"
     }
@@ -102,7 +102,7 @@
     {"character_id": "odrin", "clue_id": "C7", "points_to_character": "hale", "misleading": true, "line": "If anyone in Saltmere wished this harbor ill, it's Hale Pruitt at the Salt Cask."},
     {"character_id": "mira", "clue_id": "C4", "points_to_character": "bram", "misleading": false, "line": "Ask Bram. The lighthouse sees the water."},
     {"character_id": "bram", "clue_id": "C5", "points_to_character": "ysolde", "misleading": false, "line": "Whoever cut that cable needed cutters. Ysolde at the chandlery sells them."},
-    {"character_id": "hale", "clue_id": "C2", "points_to_character": "odrin", "misleading": false, "line": "Odrin chaired that meeting. He'll tell you who shouted the loudest."}
+    {"character_id": "hale", "clue_id": "C2", "points_to_character": "odrin", "misleading": false, "line": "Odrin chaired that meeting. He'll tell you who shouted loudest."}
   ],
 
   "solution": {

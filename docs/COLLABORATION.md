@@ -8,7 +8,7 @@ Status: accepted, 2026-11-15, after review by the owner and Codex.
 | --- | --- | --- |
 | Owner (human) | Decides scope and design, approves each phase, pushes and tags, starts the dispatcher | |
 | Claude Code (supervisor) | Designs, writes task specs, reviews and merges Codex's work, does tasks that need judgment about Claude Code itself (plugin files, agent definitions), runs independent review agents | Push or tag |
-| Codex (implementer) | Implements well-specified tasks from a spec, on its own branch, with tests | Commit to `main`, merge, push, tag, call a model, edit files outside the spec |
+| Codex (implementer) | Implements well-specified tasks from a spec, on its own branch, with tests | Commit to `main`, merge into anything but its own task branch (it merges `main` into its task branch only when asked), push, tag, call a model, edit files outside the spec |
 
 Work is divided by kind, not by size. A unit of work for Codex can be a single task or a whole phase (several related tasks on one branch), as long as it is Python work that can be checked by tests. Claude Code keeps design, review, and anything that depends on how Claude Code behaves (plugin files, agent definitions, install). A phase spec lists its tasks in order, the files the phase may touch, and the acceptance checks for each task; Codex commits once per task within the phase branch, so a review can go task by task.
 
@@ -62,6 +62,6 @@ Tasks done by Claude agents follow the same spec, review and merge steps, withou
 
 - **Unattended runs.** In dispatcher mode Codex works without approval prompts beyond its sandbox, and each queued task uses the owner's Codex quota. The sandbox and the spec's file list are the controls.
 - **Sandbox.** Codex's sandbox may have no network, so the supervisor sets up its virtualenv. The SETUP handshake runs through the real dispatcher and checks that Codex can write into `.coord`, create a branch and commit (a worktree's git data lives in the main repo's `.git/worktrees/`, outside the Codex worktree).
-- **Stale base.** A long task may branch from a `main` that has moved on. The supervisor resolves conflicts at merge time, or asks for a rebase in a review.
+- **Stale base.** A long task may branch from a `main` that has moved on. The supervisor resolves conflicts at merge time, or asks Codex in a review to merge `main` into its task branch (never a rebase).
 - **Watcher lifetime.** The supervisor's watcher only runs while the supervisor's session is active; reports written while it is down are picked up on the next check of the board.
 - **Bash 3.2.** macOS ships Bash 3.2, so the dispatcher avoids newer Bash features.

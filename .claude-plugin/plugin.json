@@ -1,0 +1,18 @@
+{
+  "name": "harbor-mystery",
+  "version": "0.1.0",
+  "description": "Harbor Mystery: a detective game played in Claude Code. A Python MCP server owns the game state; the session is the game master, and NPC and referee subagents speak for the characters.",
+  "author": {
+    "name": "Nilesh Kumar Gupta"
+  },
+  "mcpServers": {
+    "harbor": {
+      "command": "python3",
+      "args": ["-m", "harbor.mcp_server"],
+      "env": {
+        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/src",
+        "HARBOR_HOME": "${CLAUDE_PLUGIN_DATA}"
+      }
+    }
+  }
+}
