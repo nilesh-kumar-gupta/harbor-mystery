@@ -10,37 +10,27 @@ nothing changed.
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from harbor.engine import rules, state
+from harbor.engine import interaction, rules, state
 from harbor.engine.state import Game
 from harbor.tracing import Tracer
 
-AUDIENCES = ("gm", "npc", "engine")  # engine steps are never offered to a model
+AUDIENCES = ("gm", "npc", "referee", "engine")  # engine steps are never offered to a model
 _JSON_TYPES = {"string": str, "array": list, "integer": int, "object": dict}
 
 
 @dataclass
-class Draft:
-    """What an NPC runner hands back to `talk`: a reply not yet accepted."""
-
-    text: str
-    capped: bool = False  # the agent hit its tool-call limit
-
-
-@dataclass
 class Context:
-    """What a tool function receives: the run and its collaborators.
-
-    `npc_runner(ctx, card, message, note) -> Draft` is the NPC agent, passed in
-    so that `tools` never imports `agents`.
-    """
+    """Run collaborators and process-local call limits; no agent callbacks."""
 
     game: Game
-    tracer: Tracer | None = None  # filled in below, so no call can run untraced
-    npc_runner: Callable[..., Draft] | None = None
-    referee_llm: Any = None  # the cheap model for the referee's second check; None: code check only
+    tracer: Tracer | None = None
+    counts: dict = field(default_factory=dict)
+    limited: set = field(default_factory=set)
+    turn_open: bool = False
+    trace_warning_seen: int = 0
 
     def __post_init__(self) -> None:
         # one tracer per run, so span ids never collide between contexts
@@ -110,9 +100,29 @@ class Registry:
             st = state.read(game)
         except Exception:  # an unreadable database is still reported as a value below
             st = None
+        previous = None
+        valid_turn = (name == "player_turn" and audience == "gm" and st
+                      and not state.is_over(game)
+                      and _check_arguments(self.get("player_turn").input_schema, arguments) is None)
+        if valid_turn and ctx.turn_open:
+            previous = self.call(ctx, "close_turn", {}, "gm")
+            if not previous.get("ok"):
+                return previous
+            st = state.read(game)
+        if valid_turn and not ctx.turn_open:
+            ctx.begin_turn()
         attrs = {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": str(name),
                  "game.turn": st["turn"] if st else 0, "game.audience": audience}
-        with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs) as span:
+        parent_id = None
+        args = arguments if isinstance(arguments, dict) else {}
+        iid, attempt = args.get("interaction_id"), args.get("attempt")
+        if iid and attempt:
+            attrs.update({"game.interaction_id": iid, "game.attempt": attempt})
+            parent_id = f"{iid}-a{attempt}-{'npc' if audience == 'npc' else 'ref'}"
+        elif ctx.turn_open or name == "player_turn":
+            parent_id = f"{ctx.tracer.trace_id}-gm"
+        with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs,
+                             parent_id=parent_id) as span:
             savepoint = f"tool_{next(_savepoints)}"
             game.conn.execute(f"SAVEPOINT {savepoint}")
             outer_span, game.span_id = game.span_id, span.span_id
@@ -128,15 +138,49 @@ class Registry:
                 if result is None or not result.get("ok"):  # None: interrupted, re-raising
                     game.conn.execute(f"ROLLBACK TO {savepoint}")
                 game.conn.execute(f"RELEASE {savepoint}")
+            if name == "close_turn" and result.get("ok"):
+                sid = f"{ctx.tracer.trace_id}-gm"
+                if sid in ctx.tracer._virtual:
+                    gm = ctx.tracer._virtual[sid]
+                    ctx.tracer.close_virtual(sid, status=gm.status, output=gm.output)
+            if name == "player_turn" and previous:
+                result["previous"] = previous
+            if name == "begin_talk" and result.get("ok"):
+                span.attrs.update({"game.interaction_id": result["interaction_id"], "game.attempt": 1})
             span.output = result
             span.status = "ok" if result.get("ok") else "error"
+            if ctx.tracer.trace_failures > ctx.trace_warning_seen:
+                result["trace_warning"] = ctx.tracer.trace_failures
+                ctx.trace_warning_seen = ctx.tracer.trace_failures
             return result
 
     def _run(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
         game = ctx.game
-        if audience != "engine" and state.read(game) is not None and state.is_over(game):
+        if audience != "engine" and name not in ("close_turn", "finalize_talk") and state.read(game) is not None and state.is_over(game):
             return error("game over")
         tool = self._tools.get(name) if isinstance(name, str) else None
+        current = interaction.opened(game)
+        if audience == "gm" and current and name not in ("finalize_talk", "notebook"):
+            return error("finish the conversation first", interaction_id=current["interaction_id"])
+        if audience == "gm" and ctx.turn_open and name not in ("player_turn", "close_turn", "finalize_talk", "notebook"):
+            key = ("gm", state.read(game)["turn"])
+            ctx.counts[key] = ctx.counts.get(key, 0) + 1
+            if ctx.counts[key] > 3:
+                return error("game master tool limit")
+        if audience == "npc" and name not in ("npc_context", "submit_draft"):
+            # Bind failed calls to the current valid attempt before checking the
+            # gameplay schema, so malformed arguments cannot evade the cap.
+            args = arguments if isinstance(arguments, dict) else {}
+            iid, attempt = args.get("interaction_id"), args.get("attempt")
+            if isinstance(iid, str) and type(attempt) is int:
+                problem = interaction.validate(game, iid, attempt, ("drafting",))
+                if problem:
+                    return error(problem)
+                key = (iid, attempt)
+                ctx.counts[key] = ctx.counts.get(key, 0) + 1
+                if ctx.counts[key] > 4:
+                    ctx.limited.add(key)
+                    return error("NPC tool limit")
         if tool is None or tool.audience != audience:
             return error(f"unknown tool {name!r}", tools=self.names(audience))
         problem = _check_arguments(tool.input_schema, arguments)
@@ -149,7 +193,7 @@ class Registry:
         if started and not tool.when_ended:
             if state.is_over(game):
                 return error("game over")
-            if rules.past_end(game) and audience != "npc":
+            if rules.past_end(game) and audience not in ("npc", "referee") and name != "finalize_talk":
                 # NPC tools only run inside a talk that started before the end of the day
                 return error("the day is over")
         return tool.func(ctx, **(arguments or {}))

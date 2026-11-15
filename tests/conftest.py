@@ -43,3 +43,43 @@ def make_session(case):
 
 def tool(ctx, name, **arguments):
     return REGISTRY.call(ctx, name, arguments, "gm")
+
+
+def talk_call(ctx, arguments, audience="gm"):
+    from harbor.agents.conversation import run
+    return run(ctx, getattr(ctx, "test_npc_llm", None),
+               getattr(ctx, "test_referee_llm", None), **arguments)
+
+
+def active_ids(ctx):
+    row = ctx.game.conn.execute("SELECT * FROM interactions ORDER BY rowid DESC LIMIT 1").fetchone()
+    return {"interaction_id": row["interaction_id"], "attempt": row["attempt"]} if row else {"interaction_id": "missing", "attempt": 1}
+
+
+def npc_call(ctx, name, **args):
+    return REGISTRY.call(ctx, name, {**args, **active_ids(ctx)}, "npc")
+
+
+def open_npc(ctx, character=None, message="hello"):
+    from harbor.engine import interaction, state
+    current = interaction.opened(ctx.game)
+    if current is None:
+        character = character or state.read(ctx.game)["active_character"]
+        begin = REGISTRY.call(ctx, "begin_talk", {"character": character, "message": message}, "gm")
+        assert begin["ok"], begin
+    return REGISTRY.call(ctx, "npc_context", active_ids(ctx), "npc")
+
+
+def inspected_talk(ctx, character, message, name="recall_knowledge"):
+    from harbor.llm.scripted import ScriptedLLM
+    from harbor.agents.conversation import run
+    import json
+    captured = []
+    def policy(system, messages, tools):
+        if messages[-1]["role"] != "tool":
+            return {"tool_calls": [(name, {})]}
+        captured.append(json.loads(messages[-1]["content"]))
+        return "Hm."
+    out = run(ctx, ScriptedLLM(policy), None, character, message)
+    assert out["ok"]
+    return captured[-1]

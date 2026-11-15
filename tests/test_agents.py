@@ -1,3 +1,4 @@
+from conftest import talk_call, npc_call, inspected_talk, active_ids
 """M3: the agent loop, the NPC agent, `talk` with the active-character rule and
 per-character trust, and the game master, all through ScriptedLLM."""
 
@@ -7,11 +8,10 @@ import pytest
 
 from harbor.agents.game_master import CAP_LINE, GameMaster
 from harbor.agents.loop import run_loop
-from harbor.agents.npc import make_npc_runner
 from harbor.engine import events, state
 from harbor.llm.scripted import ScriptedLLM
 from harbor.offline import npc_policy
-from harbor.tools import REGISTRY, Context, Draft
+from harbor.tools import REGISTRY, Context
 
 
 def snapshot(ctx):
@@ -25,19 +25,19 @@ def walk(ctx, *places):
 
 
 def talk(ctx, who, message):
-    return REGISTRY.call(ctx, "talk", {"character": who, "message": message}, "gm")
+    return talk_call(ctx, {"character": who, "message": message}, "gm")
 
 
 def npc(ctx, *replies):
     """Attach a scripted NPC agent to the context; returns its ScriptedLLM."""
     llm = ScriptedLLM(list(replies))
-    ctx.npc_runner = make_npc_runner(llm)
+    ctx.test_npc_llm = (llm)
     return llm
 
 
 @pytest.fixture
 def offline_npc(ctx):
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(npc_policy))
+    ctx.test_npc_llm = (ScriptedLLM(npc_policy))
     return ctx
 
 
@@ -175,7 +175,7 @@ def test_any_second_ask_counts_as_a_repeat_once_per_character(ctx):
     talk(ctx, "ysolde", "Who bought cutters?")
     llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
     talk(ctx, "ysolde", "Who bought cutters? Tell me.")
-    assert json.loads(llm.calls[-1]["messages"][-1]["content"]) == {"ok": True, "trust": 1}
+    assert json.loads(llm.calls[-1]["messages"][-1]["content"]) == {"ok": True, "trust": 1, "staged": True}
     assert state.trust_of(ctx.game, "ysolde") == 1
     llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
     talk(ctx, "ysolde", "Who bought them?")
@@ -219,16 +219,15 @@ def test_tom_confesses_when_shown_c3_and_c5(offline_npc, ctx):
 
 
 def test_hale_admits_c7_only_when_confronted(offline_npc, ctx):
-    recall = lambda: [c["id"] for c in REGISTRY.call(ctx, "recall_knowledge", {}, "npc")["clues"]]
     walk(ctx, "fish market", "salt cask")
-    talk(ctx, "hale", "What do you know about the harbor fees?")
-    assert "C7" not in recall()                       # min_trust 2, and not yet confronted
+    recall = inspected_talk(ctx, "hale", "What do you know about the harbor fees?")
+    assert "C7" not in [c["id"] for c in recall["clues"]]                       # min_trust 2, and not yet confronted
     walk(ctx, "fish market", "quay", "office")
     talk(ctx, "odrin", "Any trouble with the harbor fees?")
     assert "C7" in state.found_clue_ids(ctx.game)     # Odrin tells it
     walk(ctx, "quay", "fish market", "salt cask")
-    talk(ctx, "hale", "Odrin says you owe unpaid fees and would see the harbor sink.")
-    assert "C7" in recall()                           # shown C7: unlocked at any trust
+    recall = inspected_talk(ctx, "hale", "Odrin says you owe unpaid fees and would see the harbor sink.")
+    assert "C7" in [c["id"] for c in recall["clues"]]                           # shown C7: unlocked at any trust
     assert state.trust_of(ctx.game, "hale") == 0
 
 
@@ -238,13 +237,14 @@ def test_npc_tools_need_an_active_character(ctx):
     for name, arguments in (("recall_knowledge", {}), ("recall_conversation", {}),
                             ("reveal_clue", {"clue_id": "C3"}),
                             ("update_trust", {"reason": "rude"})):
-        assert REGISTRY.call(ctx, name, arguments, "npc") == {
-            "ok": False, "error": "no conversation is in progress"}
+        assert npc_call(ctx, name, **arguments) == {
+            "ok": False, "error": "unknown interaction"}
 
 
 def test_npc_tools_refuse_a_character_argument(offline_npc):
-    talk(offline_npc, "mira", "hello")
-    out = REGISTRY.call(offline_npc, "recall_knowledge", {"character": "tom"}, "npc")
+    from conftest import open_npc
+    open_npc(offline_npc, "mira")
+    out = REGISTRY.call(offline_npc, "recall_knowledge", {**active_ids(offline_npc), "character": "tom"}, "npc")
     assert out == {"ok": False, "error": "unexpected argument 'character'"}
 
 
@@ -259,17 +259,16 @@ def test_recall_conversation_returns_only_this_characters_lines(offline_npc):
     ctx = offline_npc
     talk(ctx, "mira", "First question about the night.")
     walk(ctx, "office")
-    talk(ctx, "odrin", "Tell me about the meeting.")
-    out = REGISTRY.call(ctx, "recall_conversation", {}, "npc")
+    out = inspected_talk(ctx, "odrin", "Tell me about the meeting.", "recall_conversation")
     assert [l["text"] for l in out["lines"] if l["speaker"] == "player"] == [
         "Tell me about the meeting."]
 
 
 def test_the_npc_agent_cannot_write_state_except_through_its_tools(ctx):
-    def sneaky(ctx_, card, message, note):
-        state.advance_clock(ctx_.game, 60)            # not a tool call: the guard is closed
-        return Draft("hello")
-    ctx.npc_runner = sneaky
+    def sneaky(*args):
+        state.advance_clock(ctx.game, 60)            # not a tool call: the guard is closed
+        return "hello"
+    ctx.test_npc_llm = ScriptedLLM(sneaky)
     out = talk(ctx, "mira", "hello")
     assert out["ok"] and out["reply"] == "Oh, I... no, I've lost the thread of it. These nets won't mend themselves."
     assert out["fallback"] is True and state.read(ctx.game)["clock"] == 360 + 10

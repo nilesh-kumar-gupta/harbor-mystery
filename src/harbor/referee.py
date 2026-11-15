@@ -24,8 +24,7 @@ from dataclasses import dataclass, field
 from harbor.engine import rules, state
 from harbor.engine.state import Game
 
-LEAK_NOTE = "your last reply used facts you do not know. Use only what your tools returned."
-CHECK_FAILED_NOTE = "your last reply could not be checked. Reply again, using only what your tools returned."
+from harbor.engine.interaction import LEAK_NOTE, CHECK_FAILED_NOTE
 
 
 @dataclass
@@ -88,46 +87,13 @@ def model_check_input(game: Game, card: dict, message: str, reply: str) -> str:
                        "reply": reply}, indent=1)
 
 
-def check(ctx, card: dict, message: str, reply: str, llm, system: str,
-          attempt: int) -> Verdict:
-    """Run both checks inside one referee span. Never raises."""
-    game = ctx.game
-    attrs = {"game.npc": card["id"], "game.attempt": attempt, "gen_ai.agent.name": "referee"}
-    with ctx.tracer.span("referee", "referee", input={"reply": reply}, attrs=attrs) as span:
-        verdict = code_check(game, card["id"], message, reply)
-        span.attrs["referee.code_check"] = "pass" if verdict.ok else "leak"
-        if verdict.ok and llm is not None:
-            verdict = _model_check(ctx, llm, system, model_check_input(game, card, message, reply))
-            span.attrs["referee.model_check"] = (
-                "error" if verdict.error else "pass" if verdict.ok else "leak")
-        elif verdict.ok:
-            span.attrs["referee.model_check"] = "skipped: no model"
-        else:
-            span.attrs["referee.model_check"] = "skipped: code check failed"
-        span.attrs["game.leaked_clues"] = verdict.leaked
-        span.output = {"ok": verdict.ok, "leaked": verdict.leaked, "reason": verdict.reason}
-        span.status = "error" if verdict.error else "ok" if verdict.ok else "rejected"
-        return verdict
+def parse_verdict(value) -> str:
+    """Accept only an entire, case-sensitive verdict; everything else vetoes."""
+    if isinstance(value, str) and value.strip() in ("OK", "LEAK"):
+        return value.strip()
+    return "INVALID"
 
 
-def _model_check(ctx, llm, system: str, content: str) -> Verdict:
-    attrs = {"gen_ai.operation.name": "chat", "gen_ai.agent.name": "referee",
-             "gen_ai.request.model": getattr(llm, "model", "")}
-    with ctx.tracer.span("llm_call", "chat", input={"system": system, "content": content},
-                         attrs=attrs) as span:
-        try:
-            reply = llm.complete(system, [{"role": "user", "content": content}], [])
-        except Exception as e:   # fail closed: an unchecked draft is treated as a leak
-            span.status = "error"
-            span.output = {"error": f"{type(e).__name__}: {e}"}
-            return Verdict(False, reason=f"model check failed: {type(e).__name__}",
-                           error=True)
-        span.model = reply.model
-        span.input_tokens, span.output_tokens = reply.input_tokens, reply.output_tokens
-        span.attrs["gen_ai.usage.input_tokens"] = reply.input_tokens
-        span.attrs["gen_ai.usage.output_tokens"] = reply.output_tokens
-        span.output = {"text": reply.text}
-    answer = reply.text.strip().upper()
-    if answer.startswith("LEAK"):
-        return Verdict(False, reason="model check: " + reply.text.strip()[:200])
-    return Verdict(True)
+def referee_context(game: Game, card: dict, message: str, reply: str) -> dict:
+    """The referee's permitted facts, excluding every other character's knowledge."""
+    return json.loads(model_check_input(game, card, message, reply))
