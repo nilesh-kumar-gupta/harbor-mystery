@@ -1,10 +1,11 @@
-"""Every case in cases/*.json is a valid, fair, playable case (ADR 005).
+"""Every case in cases/*.json passes the checks that define a valid case (ADR 005).
 
 Each test runs once per case file, so a new case is checked by dropping it into
-`cases/`. "Valid" means: it loads, the solver finds every winning clue reachable
-and exactly one culprit, the scripted bot wins it, and its keywords work with the
-referee's code check (no false leaks from fallback, pointer or clue lines; no
-missed leaks when a character states a clue they have not revealed).
+`cases/`. The checks: it loads; the solver reaches every clue and finds exactly one
+culprit (by the hand-written `implicates` labels, ignoring topics); the scripted bot
+wins it; and its keywords work with the referee's code check for the fixed lines a
+case supplies (fallback lines, pointer lines, clue texts). They cannot judge how a
+real model will paraphrase; that stays with the referee's model check and review.
 """
 
 import json
@@ -27,12 +28,19 @@ CASES = [load_case(p) for p in CASE_PATHS]
 IDS = [c.case_id for c in CASES]
 BOT_TURN_LIMIT = 40          # as in test_bot_player: the bot must win in under 40 turns
 
+# Clue keywords in text every character's prompt can draw on (premise, place
+# descriptions), so a natural reply may trip them. Listed when deliberate.
+INTENDED_SHARED_KEYWORDS = {
+    # Saltmere's predate this check; its wording rewrite may remove them.
+    "saltmere": {("premise", "C1", "pins"), ("fish_market", "C4", "skiff")},
+}
+
 # Clue keywords that occur in a character's own persona or speech style on purpose.
 # The referee ignores such a keyword for that character (ADR 002 #25), so each one
 # is a deliberate hole in the code check and must be listed here.
 INTENDED_PERSONA_KEYWORDS = {
     "saltmere": {("tom", "knee"), ("hale", "fees")},
-    "gaiety": {("edwin", "storm ending")},
+    "gaiety": set(),
     "kestrel": set(),
 }
 
@@ -126,22 +134,16 @@ def test_fallback_lines_never_trip_the_code_check(case):
 
 @per_case
 def test_pointer_lines_never_trip_the_code_check(case):
+    """The referee strips a character's pointer lines only when quoted exactly, so
+    exact lines always pass. Altered punctuation defeats the strip: then the line may
+    trip only the clue it points to (Saltmere's Bram names the cutters he points to)."""
     game = fresh_game(case)
     for p in case.pointers:
-        verdict = referee.code_check(game, p.character_id, "", p.line)
-        assert verdict.ok, (p.character_id, p.clue_id, verdict.reason)
-
-
-@per_case
-def test_pointer_lines_carry_no_other_clues_keywords(case):
-    """The referee strips a pointer line only when it is quoted exactly; a model that
-    paraphrases it must not trip another clue. Words of the clue it points to are allowed."""
-    chars = {c.id: c for c in case.characters}
-    for p in case.pointers:
-        own = f"{chars[p.character_id].persona} {chars[p.character_id].speech_style}"
-        stray = {(cid, k) for cid, k in keywords_in(p.line, case)
-                 if cid != p.clue_id and not rules.matches(own, [k])}
-        assert not stray, (p.character_id, p.clue_id, stray)
+        assert referee.code_check(game, p.character_id, "", p.line).ok
+        altered = p.line.replace(".", ";").replace("!", ";").replace(",", ";")
+        assert altered != p.line, p.line
+        leaked = referee.code_check(game, p.character_id, "", altered).leaked
+        assert set(leaked) <= {p.clue_id}, (p.character_id, p.clue_id, leaked)
 
 
 @per_case
@@ -178,6 +180,14 @@ def test_keywords_occur_in_their_own_clue(case):
     """A player who quotes a notebook clue shows it (ADR 001 #3)."""
     for clue in case.clues:
         assert clue.keywords and rules.matches(clue.text, clue.keywords), clue.id
+
+
+@per_case
+def test_premise_and_place_descriptions_carry_only_intended_keywords(case):
+    found = {("premise", cid, k) for cid, k in keywords_in(case.premise, case)}
+    for place in case.places:
+        found |= {(place.id, cid, k) for cid, k in keywords_in(place.description, case)}
+    assert found == INTENDED_SHARED_KEYWORDS.get(case.case_id, set())
 
 
 @per_case

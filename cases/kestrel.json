@@ -1,7 +1,7 @@
 {
   "case_id": "kestrel",
   "title": "The Kestrel Ridge Plates",
-  "premise": "Kestrel Ridge Observatory stands above the snowline, a day's mule climb from the valley. Three nights ago its astronomers photographed a new comet, and the glass plates were the proof of who saw it first. Last night someone broke into the darkroom and smashed every one of them. You have just come up with the morning mule to find out who, and the mule goes down again at five.",
+  "premise": "Kestrel Ridge Observatory stands above the snowline, a long, dark climb by mule from the valley. Three nights ago its astronomers photographed a new comet, and the glass plates were the proof of who saw it first. Last night someone broke into the darkroom and smashed every one of them. You have just come up with the morning mule to find out who, and the mule goes down again at five.",
   "start_place": "yard",
   "start_clock": "07:00",
   "end_clock": "17:00",
@@ -37,7 +37,7 @@
     {
       "id": "gideon", "name": "Gideon Stroud", "role": "stoker", "start_place": "boiler_house", "schedule": [],
       "persona": "Feeds the furnace through the night and watches the yard from his window between shovelfuls. Shy of the scientists, proud of his fire.",
-      "speech_style": "Hoarse and halting; counts things off on his fingers and calls everyone sir or miss.",
+      "speech_style": "Hoarse and halting, with long silences; calls everyone sir or miss and talks to the furnace as if it were listening.",
       "fallback_line": "I keep the fire, sir. That's all I keep."
     },
     {
@@ -56,13 +56,13 @@
       "id": "marr", "name": "Hollis Marr", "role": "senior astronomer", "start_place": "dome", "schedule": [],
       "persona": "Grand, impatient and vain. Has announced the comet as his own discovery and takes any doubt as an insult.",
       "speech_style": "Lofty and lecturing, fond of long words; corrects every question before answering it.",
-      "fallback_line": "I am an astronomer, not a constable. Good day to you."
+      "fallback_line": "Constables ask questions; astronomers answer the interesting ones. Good day to you."
     },
     {
       "id": "voss", "name": "Aurelia Voss", "role": "director", "start_place": "study", "schedule": [],
       "persona": "Cool, exact and tired. Answers for the observatory's good name and for every key on the ridge. Trusts evidence, not feelings, and gives nothing to a stranger who brings none.",
       "speech_style": "Formal and clipped; speaks in numbered points.",
-      "fallback_line": "I deal in facts, not gossip. Bring me something I can verify."
+      "fallback_line": "Bring me evidence. Until you have some, we are finished here."
     },
     {
       "id": "wren", "name": "Wren Ashby", "role": "junior astronomer", "start_place": "darkroom", "schedule": [],
@@ -76,28 +76,28 @@
     {"id": "C1", "kind": "method", "found_at_place": "darkroom", "keywords": ["not forced", "opened with a key"], "implicates": [],
      "text": "The plate cabinet was opened with a key, not forced, and every comet plate inside was smashed."},
     {"id": "C2", "kind": "opportunity", "found_at_place": "yard", "keywords": ["nail marks", "boot prints"], "implicates": ["pell"],
-     "text": "A single line of boot prints, each with a ring of nail marks, runs through the new snow from the kitchen passage door to the darkroom and back. The snow stopped at two."},
-    {"id": "C3", "kind": "opportunity", "found_at_place": null, "keywords": ["shaded lantern", "twenty minutes"], "implicates": ["pell"],
-     "text": "Near three in the morning a shaded lantern crossed the yard from the kitchen passage to the darkroom, and came back about twenty minutes later."},
-    {"id": "C4", "kind": "method", "found_at_place": null, "keywords": ["wrong hook", "only one working in the study"], "implicates": ["pell"],
+     "text": "The only boot prints with a ring of nail marks in the new snow run from the kitchen passage door to the darkroom and back. The snow stopped at two."},
+    {"id": "C3", "kind": "opportunity", "found_at_place": null, "keywords": ["shaded lantern", "lantern crossed"], "implicates": ["pell"],
+     "text": "Near three in the morning a shaded lantern crossed the yard from the kitchen passage to the darkroom and came back about twenty minutes later; it was the only light out in the yard all night."},
+    {"id": "C4", "kind": "method", "found_at_place": null, "keywords": ["wrong hook", "only one working in the study", "alone in the study"], "implicates": ["pell"],
      "text": "This morning the director's spare darkroom key was hanging on the wrong hook, and Pell was the only one working in the study after supper."},
     {"id": "C5", "kind": "motive", "found_at_place": null, "keywords": ["registered letter", "tavern debt"], "implicates": ["pell"],
      "text": "Last week Abel carried up a registered letter for Pell from the Heligan Observatory, and since then Pell has paid off his tavern debt in the valley."},
-    {"id": "C6", "kind": "motive", "found_at_place": null, "keywords": ["claimed the comet", "date stands first"], "implicates": [],
-     "text": "The Heligan Observatory has claimed the comet as well; without our plates, Heligan's date stands first."},
+    {"id": "C6", "kind": "motive", "found_at_place": null, "keywords": ["heligan has claimed", "heligan's date"], "implicates": [],
+     "text": "Heligan has claimed the comet as well, from their observatory in the south; without our plates, Heligan's date stands first."},
     {"id": "C7", "kind": "red_herring", "found_at_place": null, "keywords": ["nothing but smudges", "before any outsider"], "implicates": ["marr"],
      "text": "Marr asked the director to destroy the comet plates before any outsider saw them, calling them nothing but smudges."},
-    {"id": "C8", "kind": "alibi", "found_at_place": "dome", "keywords": ["dome log", "quarter of an hour"], "implicates": [],
-     "text": "The dome log shows Marr guiding the telescope all night, with a correction in his hand every quarter of an hour from ten until six."},
+    {"id": "C8", "kind": "alibi", "found_at_place": "dome", "keywords": ["dome log", "correction in his hand"], "implicates": [],
+     "text": "The dome log shows the sky cleared at two, and from then until six Marr guided the telescope himself, with a correction in his hand every few minutes."},
     {"id": "C9", "kind": "red_herring", "found_at_place": null, "keywords": ["swore at supper", "smash the plates herself"], "implicates": ["wren"],
      "text": "Wren swore at supper that she would smash the plates herself sooner than see another man's name on her comet."},
     {"id": "C10", "kind": "red_herring", "found_at_place": null, "keywords": ["stained with developer", "other darkroom key"], "implicates": ["wren"],
      "text": "The only other darkroom key belongs to Wren, and her cuffs are stained with developer."},
     {"id": "C11", "kind": "alibi", "found_at_place": null, "keywords": ["fever", "dosed her"], "implicates": [],
      "text": "Wren lay on the kitchen settle with a fever from midnight until morning; Martha sat up with her and dosed her at three."},
-    {"id": "C12", "kind": "opportunity", "found_at_place": null, "keywords": ["empty camp bed", "gone from the mat"], "implicates": ["pell"],
-     "text": "When Martha fetched water from the passage pump at three, she saw an empty camp bed in the computing room, and Pell's boots were gone from the mat."},
-    {"id": "C13", "kind": "opportunity", "found_at_place": null, "keywords": ["hobnailed", "felt overshoes"], "implicates": ["pell"],
+    {"id": "C12", "kind": "opportunity", "found_at_place": null, "keywords": ["bed was empty", "gone from the mat"], "implicates": ["pell"],
+     "text": "When Martha fetched water from the passage pump at three, the camp bed in the computing room was empty and Pell's boots were gone from the mat."},
+    {"id": "C13", "kind": "opportunity", "found_at_place": null, "keywords": ["hobnail", "felt overshoes"], "implicates": ["pell"],
      "text": "Pell is the only one on the ridge who wears hobnailed boots; everyone else goes about the snow in felt overshoes."},
     {"id": "C14", "kind": "motive", "found_at_place": null, "keywords": ["paid his debts", "admits he smashed"], "implicates": ["pell"],
      "text": "Pell admits he smashed the plates: the Heligan Observatory paid his debts so that its own date would stand first."}
@@ -106,16 +106,21 @@
   "knowledge": [
     {"character_id": "abel", "clue_id": "C13", "unlock_topics": ["boot", "prints", "nail", "hobnail", "tracks", "footprint", "footwear", "shoes", "overshoes"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "abel", "clue_id": "C5", "unlock_topics": ["pell", "jonah", "letter", "post", "money", "debt", "heligan", "paid"], "min_trust": 1, "related_clues": ["C6", "C13"], "unlock_if_shown": []},
-    {"character_id": "gideon", "clue_id": "C3", "unlock_topics": ["night", "lantern", "light", "yard", "window", "three", "saw", "see"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
-    {"character_id": "martha", "clue_id": "C12", "unlock_topics": ["night", "pell", "jonah", "computing", "bed", "passage", "boots", "three"], "min_trust": 1, "related_clues": ["C2", "C3"], "unlock_if_shown": []},
+    {"character_id": "gideon", "clue_id": "C3", "unlock_topics": ["night", "overnight", "lantern", "light", "yard", "window", "three", "saw", "see"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "martha", "clue_id": "C12", "unlock_topics": ["night", "overnight", "pell", "jonah", "computing", "bed", "passage", "boots", "three"], "min_trust": 1, "related_clues": ["C2", "C3"], "unlock_if_shown": []},
     {"character_id": "martha", "clue_id": "C11", "unlock_topics": ["wren", "ashby", "fever", "ill", "sick", "settle"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "voss", "clue_id": "C1", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "voss", "clue_id": "C4", "unlock_topics": ["key", "cabinet", "lock", "forced", "hook", "study"], "min_trust": 1, "related_clues": ["C1"], "unlock_if_shown": []},
     {"character_id": "voss", "clue_id": "C6", "unlock_topics": ["comet", "plates", "heligan", "claim", "discovery", "first", "why"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "voss", "clue_id": "C10", "unlock_topics": ["key", "wren", "ashby", "darkroom"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
-    {"character_id": "voss", "clue_id": "C7", "unlock_topics": ["marr", "hollis", "destroy"], "min_trust": 1, "related_clues": ["C7"], "unlock_if_shown": ["C7"]},
+    {"character_id": "voss", "clue_id": "C7", "unlock_topics": ["marr", "hollis", "destroy"], "min_trust": 1, "related_clues": [], "unlock_if_shown": ["C7"]},
+    {"character_id": "marr", "clue_id": "C8", "unlock_topics": ["log", "night", "telescope", "alibi", "where"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "marr", "clue_id": "C9", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "marr", "clue_id": "C6", "unlock_topics": ["heligan", "rival", "claim"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "wren", "clue_id": "C7", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "wren", "clue_id": "C1", "unlock_topics": ["cabinet", "lock", "forced", "glass", "broken"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "wren", "clue_id": "C10", "unlock_topics": ["key", "cuffs", "stain", "developer", "hands"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "wren", "clue_id": "C11", "unlock_topics": ["where", "fever", "ill", "sick", "settle", "kitchen", "alibi"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "wren", "clue_id": "C6", "unlock_topics": ["heligan", "rival", "claim", "first", "why"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "pell", "clue_id": "C14", "unlock_topics": [], "min_trust": 2, "related_clues": ["C2", "C4", "C5", "C12", "C13"], "unlock_if_shown": ["C5", "C12"]}
   ],
@@ -140,13 +145,12 @@
       "Last week Abel brings Pell a registered letter, with money, from the Heligan Observatory.",
       "Three nights ago Wren photographs the comet; Marr announces it as his own.",
       "Yesterday evening Pell works alone in the director's study after supper and pockets the spare darkroom key.",
-      "22:00 Marr begins his night at the telescope, logging every quarter hour.",
       "Midnight: Wren, feverish, lies down on the kitchen settle and Martha sits up with her.",
-      "02:00 The snow stops.",
+      "02:00 The snow stops and the sky clears; Marr guides the telescope until six, logging a correction every few minutes.",
       "About 02:55 Pell leaves by the kitchen passage door in his hobnailed boots with a shaded lantern.",
       "About 03:00 he opens the plate cabinet with the spare key and smashes the plates; Martha finds his camp bed empty.",
       "About 03:15 he is back through the passage door.",
-      "Before breakfast he returns the key to the study, on the wrong hook."
+      "About 06:30, with the yard trodden by the morning's comings and goings, he hangs the key back in the study, on the wrong hook."
     ]
   },
 

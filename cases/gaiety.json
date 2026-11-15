@@ -55,15 +55,15 @@
   "clues": [
     {"id": "C1", "kind": "method", "found_at_place": "stage", "keywords": ["straight cuts", "sharp blade"], "implicates": [],
      "text": "The garden backdrop was cut in three long, straight cuts from top to bottom: the work of a sharp blade, not a tear."},
-    {"id": "C2", "kind": "motive", "found_at_place": null, "keywords": ["storm ending", "never be played"], "implicates": ["edwin"],
+    {"id": "C2", "kind": "motive", "found_at_place": null, "keywords": ["never be played", "swore the garden scene"], "implicates": ["edwin"],
      "text": "Last week Marcus cut Edwin's storm ending and wrote a garden scene in its place; Edwin swore the garden scene would never be played."},
     {"id": "C3", "kind": "alibi", "found_at_place": null, "keywords": ["signed out", "lodgings"], "implicates": [],
-     "text": "The sign-in book shows Edwin signed out at ten last night, and he says he spent the night at his lodgings."},
-    {"id": "C4", "kind": "opportunity", "found_at_place": null, "keywords": ["one in the morning", "without signing"], "implicates": ["edwin"],
-     "text": "Near one in the morning Edwin let himself back in by the stage door without signing the book, and went up the stairs toward the paint loft."},
-    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["scene knife", "asking which backdrop"], "implicates": ["edwin"],
+     "text": "The sign-in book shows Edwin signed out at ten last night, saying he was off home to his lodgings."},
+    {"id": "C4", "kind": "opportunity", "found_at_place": null, "keywords": ["let himself back in", "without signing", "never signed"], "implicates": ["edwin"],
+     "text": "Near one in the morning Edwin let himself back in by the stage door without signing the book and went toward the paint loft ladder; nobody else came in after ten."},
+    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["scene knife", "knife is missing", "asking which backdrop"], "implicates": ["edwin"],
      "text": "Nell's long scene knife is missing from her rack, and Edwin came up to the loft yesterday asking which backdrop was the garden."},
-    {"id": "C6", "kind": "red_herring", "found_at_place": null, "keywords": ["before the whole company", "acted in front of"], "implicates": ["felix"],
+    {"id": "C6", "kind": "red_herring", "found_at_place": null, "keywords": ["before the whole company", "acted in front of", "act in front of"], "implicates": ["felix"],
      "text": "Felix swore before the whole company that he would take the garden backdrop down himself before he acted in front of it."},
     {"id": "C7", "kind": "alibi", "found_at_place": null, "keywords": ["supper party", "crown hotel"], "implicates": [],
      "text": "Felix left at six for a supper party at the Crown Hotel and did not come back until the nine o'clock call."},
@@ -78,10 +78,11 @@
     {"character_id": "edwin", "clue_id": "C3", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "edwin", "clue_id": "C8", "unlock_topics": [], "min_trust": 2, "related_clues": ["C4", "C5"], "unlock_if_shown": ["C4", "C5"]},
     {"character_id": "lottie", "clue_id": "C3", "unlock_topics": ["book", "sign", "edwin", "sallow", "ten", "left", "leave"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
-    {"character_id": "lottie", "clue_id": "C4", "unlock_topics": ["night", "edwin", "sallow", "door", "late", "morning", "back", "came"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "lottie", "clue_id": "C4", "unlock_topics": ["night", "overnight", "edwin", "sallow", "door", "late", "morning", "came", "come", "enter", "anyone", "anybody", "who", "see", "saw", "hear", "unusual"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "lottie", "clue_id": "C7", "unlock_topics": ["felix", "hart", "supper", "crown", "actor"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "felix", "clue_id": "C7", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "felix", "clue_id": "C6", "unlock_topics": [], "min_trust": 2, "related_clues": [], "unlock_if_shown": ["C6"]},
+    {"character_id": "nell", "clue_id": "C1", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
     {"character_id": "nell", "clue_id": "C5", "unlock_topics": ["knife", "knives", "blade", "cut", "tool", "edwin", "sallow", "backdrop", "garden", "missing", "loft"], "min_trust": 1, "related_clues": ["C1"], "unlock_if_shown": []}
   ],
 
@@ -111,5 +112,5 @@
     ]
   },
 
-  "nudge_order": ["C2", "C4", "C5"]
+  "nudge_order": ["C4", "C2", "C5"]
 }
