@@ -52,6 +52,8 @@ class Tracer:
         self.jsonl_path = Path(jsonl_path) if jsonl_path else None
         self.trace_id = f"{run_id}-setup"   # one trace per turn; see begin_trace
         self._clock = clock
+        self.trace_failures = 0
+        self._virtual: dict[str, Span] = {}
         self._stack: list[Span] = []
         self._pending: list[tuple[Span, float]] = []
         # continue numbering after spans already in this database for this run
@@ -75,7 +77,8 @@ class Tracer:
 
     @contextmanager
     def span(self, kind: str, name: str, input: Any = None, attrs: dict | None = None,
-             parent: Span | None = None) -> Iterator[Span]:
+             parent: Span | None = None, *, parent_id: str | None = None,
+             trace_id: str | None = None, span_id: str | None = None) -> Iterator[Span]:
         """Record the enclosed work as one span. An exception marks it `error` and passes on."""
         if kind not in KINDS:
             raise ValueError(f"unknown span kind {kind!r}")
@@ -83,9 +86,9 @@ class Tracer:
             parent = self.current()
         self._count += 1
         span = Span(
-            seq=self._count, span_id=f"{self.run_id}-s{self._count:06d}",
-            parent_span_id=parent.span_id if parent else None,
-            trace_id=parent.trace_id if parent else self.trace_id, kind=kind, name=name, start_ts=self._clock(),
+            seq=self._count, span_id=span_id or f"{self.run_id}-s{self._count:06d}",
+            parent_span_id=parent_id if parent_id is not None else parent.span_id if parent else None,
+            trace_id=trace_id or (parent.trace_id if parent else self.trace_id), kind=kind, name=name, start_ts=self._clock(),
             input=input, attrs=dict(attrs or {}),
         )
         self._stack.append(span)
@@ -100,6 +103,27 @@ class Tracer:
             self._pending.append((span, self._clock()))
             if not self._stack:
                 self.flush()
+
+    def open_virtual(self, kind: str, name: str, span_id: str, *, parent_id=None,
+                     trace_id=None, input=None, attrs=None) -> Span:
+        """Open a span across requests without keeping a Python stack open."""
+        if span_id in self._virtual:
+            return self._virtual[span_id]
+        if kind not in KINDS:
+            raise ValueError(f"unknown span kind {kind!r}")
+        self._count += 1
+        span = Span(self._count, span_id, parent_id, trace_id or self.trace_id,
+                    kind, name, self._clock(), input=input, attrs=dict(attrs or {}))
+        self._virtual[span_id] = span
+        return span
+
+    def close_virtual(self, span_id: str, *, status="ok", output=None, attrs=None) -> None:
+        span = self._virtual.pop(span_id)
+        span.status, span.output = status, output
+        span.attrs.update(attrs or {})
+        self._pending.append((span, self._clock()))
+        if not self._stack:
+            self.flush()
 
     def amend(self, span: Span, **fields) -> None:
         """Change a closed span before it is written, e.g. mark a draft `rejected`
@@ -120,6 +144,7 @@ class Tracer:
             try:
                 self._write(span, end_ts)
             except Exception as e:
+                self.trace_failures += 1
                 print(f"harbor: could not write span {span.span_id}: {e}", file=sys.stderr)
 
     def _write(self, span: Span, end_ts: float) -> None:
