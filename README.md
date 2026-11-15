@@ -87,7 +87,7 @@ No NPC tool takes a character argument. `talk(character)` sets the active charac
 
 ### The referee
 
-The referee checks every NPC draft before the player sees it. First a code check: each clue has keywords, and a draft that matches a clue this character has not revealed or confirmed in this conversation (and that the player did not just say) is a leak. If that passes, a cheap model call checks for stray facts the keywords miss. A rejected draft is regenerated with a note, up to 2 times, and after that the character says a fixed in-character fallback line from the case file. Whatever a rejected draft's tool calls wrote (a reveal, a trust step) is rolled back.
+The referee checks every NPC draft before the player sees it. First a code check: each clue has keywords, and a draft that matches a clue this character has not revealed or confirmed in this conversation (and that the player did not just say) is a leak. If that passes, a cheap model call checks for stray facts the keywords miss. If the check model fails, the draft is treated as a leak. A rejected draft is regenerated with a note, up to 2 times, and after that the character says a fixed in-character fallback line from the case file. Whatever a rejected draft's tool calls wrote (a reveal, a trust step) is rolled back.
 
 ### Hints
 

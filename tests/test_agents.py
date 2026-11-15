@@ -168,14 +168,20 @@ def test_trust_moves_at_most_one_step_per_conversation(ctx):
     assert state.trust_of(ctx.game, "ysolde") == 1
 
 
-def test_polite_repeat_must_be_polite(ctx):
+def test_any_second_ask_counts_as_a_repeat_once_per_character(ctx):
+    """ADR 002 #18 as amended: no courtesy word is needed, only an earlier line."""
     walk(ctx, "chandlery")
     npc(ctx, "Hm.")
     talk(ctx, "ysolde", "Who bought cutters?")
     llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
-    talk(ctx, "ysolde", "Hurry up and tell me.")
+    talk(ctx, "ysolde", "Who bought cutters? Tell me.")
+    assert json.loads(llm.calls[-1]["messages"][-1]["content"]) == {"ok": True, "trust": 1}
+    assert state.trust_of(ctx.game, "ysolde") == 1
+    llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
+    talk(ctx, "ysolde", "Who bought them?")
     assert json.loads(llm.calls[-1]["messages"][-1]["content"])["error"] == \
-        "the player did not ask politely"
+        "a polite repeat has already been counted"
+    assert state.trust_of(ctx.game, "ysolde") == 1
 
 
 def test_clues_named_before_they_were_found_do_not_count_later(offline_npc):

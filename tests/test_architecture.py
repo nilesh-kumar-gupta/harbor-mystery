@@ -67,6 +67,13 @@ def test_the_solution_object_is_read_only_by_the_loader_and_solver():
     assert readers <= {"engine/case_loader.py", "solver.py"}
 
 
+def test_implicates_is_read_only_by_the_loader_and_solver():
+    """`implicates` names the culprit, so like the solution it never reaches a tool."""
+    readers = {str(p.relative_to(SRC)) for p in SRC.rglob("*.py")
+               if "implicates" in p.read_text(encoding="utf-8")}
+    assert readers <= {"engine/schema.py", "engine/case_loader.py", "solver.py"}
+
+
 def test_npc_tools_cannot_name_a_character():
     for schema in REGISTRY.schemas("npc"):
         for prop in schema["input_schema"]["properties"]:

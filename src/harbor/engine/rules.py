@@ -85,8 +85,6 @@ def past_end(game: Game) -> bool:
 
 MAX_TRUST = 2
 TRUST_REASONS = ("polite_repeat", "related_clue_shown", "rude")
-COURTESY = ("please", "thank", "kindly", "sorry", "appreciate", "would you", "could you",
-            "if you don't mind", "pardon")
 
 
 def _list(text: str) -> list[str]:
@@ -214,8 +212,6 @@ def trust_step(game: Game, character_id: str, reason: str) -> tuple[int | None, 
     if reason == "polite_repeat":
         if len(state.player_lines(game, character_id)) < 2:
             return None, None, "the player has not asked before"
-        if not matches(_current_message(game, character_id), COURTESY):
-            return None, None, "the player did not ask politely"
         if any(e["reason"] == "polite_repeat" for e in earlier):
             return None, None, "a polite repeat has already been counted"
         return level + 1, None, ""

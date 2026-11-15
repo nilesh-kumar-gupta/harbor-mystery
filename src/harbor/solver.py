@@ -6,16 +6,14 @@ It works on the loaded Case, before any game exists, and answers two questions:
    can rise one step for a polite repeat and one per related clue the player can
    hold, up to 2; or every `unlock_if_shown` clue is reachable).
 2. Does the reachable evidence point to exactly one person? A clue points to
-   the characters its text names. Every reachable clue counts except red
-   herrings and alibis; a suspect is anyone named by at least `min_supporting`
-   of them, and there must be exactly one, the solution's culprit. Clues that
-   name nobody (C3, C4) are listed in the report: this name-based check cannot
-   see what they imply.
+   the characters in its `implicates` field (case data). Every reachable clue
+   counts except red herrings and alibis; a suspect is anyone implicated by at
+   least `min_supporting` of them, and there must be exactly one, the
+   solution's culprit. Evidence that implicates nobody is listed in the report.
 """
 
 from __future__ import annotations
 
-import re
 from collections import deque
 from dataclasses import dataclass
 
@@ -30,8 +28,8 @@ class SolverReport:
     reachable_places: set[str]
     reachable_clues: set[str]
     unreachable_required: list[str]
-    suspects: list[str]           # characters named by enough reachable evidence
-    unnamed: list[str]            # reachable evidence that names nobody
+    suspects: list[str]           # characters implicated by enough reachable evidence
+    unnamed: list[str]            # reachable evidence that implicates nobody
     problems: list[str]
 
     @property
@@ -67,16 +65,6 @@ def reachable_clues(case: Case) -> set[str]:
     return clues
 
 
-def names_in(case: Case, text: str) -> set[str]:
-    """Characters a clue text names, by first name or surname."""
-    named = set()
-    for c in case.characters:
-        for part in c.name.split():
-            if re.search(rf"\b{re.escape(part)}\b", text):
-                named.add(c.id)
-    return named
-
-
 def solve(case: Case) -> SolverReport:
     sol = case.solution
     places = reachable_places(case)
@@ -92,7 +80,7 @@ def solve(case: Case) -> SolverReport:
     for clue in case.clues:
         if clue.id not in clues or clue.kind in NOT_EVIDENCE:
             continue
-        named = names_in(case, clue.text)
+        named = set(clue.implicates or ())
         if not named:
             unnamed.append(clue.id)
         for person in named:

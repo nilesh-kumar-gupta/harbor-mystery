@@ -148,12 +148,35 @@ def test_the_model_check_runs_only_after_the_code_check_passes(ctx):
                         ("pass", "leak", "rejected"), ("pass", "pass", "ok")]
 
 
-def test_a_failing_check_model_does_not_block_the_reply(ctx):
+def test_a_failing_check_model_rejects_the_draft(ctx):
+    """The model check fails closed: an error counts as a leak, so the draft is
+    regenerated, and after 2 regenerations the fallback line is used."""
     ctx.referee_llm = ScriptedLLM([])                            # raises ScriptExhausted
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Morning."]))
+    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Morning."] * 3))
     out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
-    assert out["reply"] == "Morning."
-    assert spans_of(ctx, "llm_call")[-1]["status"] == "error"
+    assert out["reply"] == CHARS["mira"].fallback_line and out["fallback"] is True
+    assert [s["status"] for s in spans_of(ctx, "llm_call") if s["name"] == "chat"
+            and json.loads(s["attrs"]).get("gen_ai.agent.name") == "referee"] == ["error"] * 3
+    referees = spans_of(ctx, "referee")
+    assert [r["status"] for r in referees] == ["error"] * 3
+    assert {json.loads(r["attrs"])["referee.model_check"] for r in referees} == {"error"}
+    assert [s["status"] for s in spans_of(ctx, "agent")] == ["rejected"] * 3
+    assert "Morning." not in [r["text"] for r in state.conversation(ctx.game, "mira")]
+
+
+def test_a_check_model_that_recovers_lets_the_regenerated_draft_through(ctx):
+    answers = iter([RuntimeError("timeout"), "OK"])
+
+    def flaky(*_):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+    ctx.referee_llm = ScriptedLLM(flaky)
+    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Morning.", "Good morning."]))
+    out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
+    assert out["reply"] == "Good morning." and not out.get("fallback")
+    assert [r["status"] for r in spans_of(ctx, "referee")] == ["error", "ok"]
 
 
 # ---- M4 review: paraphrases, side effects and false rejections ----------------

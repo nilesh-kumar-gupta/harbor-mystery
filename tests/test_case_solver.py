@@ -16,8 +16,8 @@ def test_saltmere_is_solvable_and_points_to_one_culprit(case):
     report = solve(case)
     assert report.ok, report.problems
     assert report.unreachable_required == []
-    assert report.suspects == ["tom"]          # Hale (C7, C8) is a red herring and an alibi
-    assert report.unnamed == ["C1", "C3", "C4"]
+    assert report.suspects == ["tom"]          # Hale (C7) is only a red herring
+    assert report.unnamed == ["C1"]            # C3 and C4 now count, through `implicates`
     assert report.reachable_places == {p.id for p in case.places}
     assert report.reachable_clues == {c.id for c in case.clues}
 
@@ -54,14 +54,33 @@ def test_clues_pointing_at_two_people_is_a_problem():
     def blame_hale(d):
         for c in d["clues"]:
             if c["id"] in ("C3", "C4"):
-                c["text"] += " Hale Pruitt was seen nearby."
+                c["implicates"].append("hale")
     report = solve(mutated(blame_hale))
     assert not report.ok and report.suspects == ["hale", "tom"]
+
+
+def test_the_solver_weighs_implicates_not_the_clue_text():
+    def unblame(d):
+        for c in d["clues"]:
+            if c["id"] != "C2":
+                c["implicates"] = []          # the texts still name Tom
+    report = solve(mutated(unblame))
+    assert not report.ok and report.suspects == []
+
+
+def implicate_hale_twice(d):
+    next(c for c in d["clues"] if c["id"] == "C8")["implicates"] = ["hale"]
+
+
+def test_red_herrings_and_alibis_do_not_count():
+    report = solve(mutated(implicate_hale_twice))      # C7 and C8 both implicate Hale
+    assert report.ok and report.suspects == ["tom"]
 
 
 def test_evidence_outside_the_winning_list_still_counts():
     """The red herring is excluded by its kind, not by the solution's own list."""
     def herring_as_motive(d):
+        implicate_hale_twice(d)
         for c in d["clues"]:
             if c["id"] in ("C7", "C8"):
                 c["kind"] = "motive"

@@ -58,6 +58,9 @@ def test_brief_knowledge_assignments():
         (lambda d: d["characters"][0].update(fallback_line=" "), "fallback_line is empty"),
         (lambda d: d.update(start_clock="6am"), "is not HH:MM"),
         (lambda d: d.pop("solution"), "missing or malformed field"),
+        (lambda d: d["clues"][1].update(implicates=["nobody"]), "C2 implicates: unknown id 'nobody'"),
+        (lambda d: d["clues"][1].pop("implicates"), "C2: implicates must be a list"),
+        (lambda d: d["clues"][1].update(implicates="tom"), "C2: implicates must be a list"),
     ],
 )
 def test_invalid_cases_are_rejected(raw, mutate, expected):

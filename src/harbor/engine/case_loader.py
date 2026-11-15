@@ -50,6 +50,7 @@ class Clue:
     kind: str
     found_at_place: str | None
     keywords: tuple[str, ...]
+    implicates: tuple[str, ...] | None  # character ids; for the case solver only. None: missing
 
 
 @dataclass(frozen=True)
@@ -146,7 +147,8 @@ def _build(d: dict) -> Case:
         ),
         clues=tuple(
             Clue(c["id"], c["text"], c["kind"], c.get("found_at_place"),
-                 tuple(c.get("keywords", ())))
+                 tuple(c.get("keywords", ())),
+                 tuple(c["implicates"]) if isinstance(c.get("implicates"), list) else None)
             for c in d["clues"]
         ),
         knowledge=tuple(
@@ -212,6 +214,11 @@ def _validate(case: Case) -> list[str]:
             problems.append(f"clue {c.id}: unknown kind {c.kind!r}")
         if c.found_at_place is not None:
             need(c.found_at_place, places, f"clue {c.id} found_at_place")
+        if c.implicates is None:
+            problems.append(f"clue {c.id}: implicates must be a list of character ids")
+        else:
+            for who in c.implicates:
+                need(who, chars, f"clue {c.id} implicates")
 
     seen_pairs = set()
     for k in case.knowledge:
@@ -264,8 +271,8 @@ def insert_case(conn, case: Case) -> None:
         [(c.id, c.name, c.role, c.persona, c.speech_style, c.start_place,
           j(c.schedule), c.fallback_line) for c in case.characters],
     )
-    conn.executemany("INSERT INTO clues VALUES (?,?,?,?,?)",
-                     [(c.id, c.text, c.kind, c.found_at_place, j(c.keywords))
+    conn.executemany("INSERT INTO clues VALUES (?,?,?,?,?,?)",
+                     [(c.id, c.text, c.kind, c.found_at_place, j(c.keywords), j(c.implicates))
                       for c in case.clues])
     conn.executemany(
         "INSERT INTO knowledge VALUES (?,?,?,?,?,?)",

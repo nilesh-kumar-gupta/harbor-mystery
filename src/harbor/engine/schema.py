@@ -30,7 +30,8 @@ CREATE TABLE characters (
 );
 CREATE TABLE clues (
     id TEXT PRIMARY KEY, text TEXT NOT NULL, kind TEXT NOT NULL, found_at_place TEXT,
-    keywords TEXT NOT NULL                          -- JSON list
+    keywords TEXT NOT NULL,                         -- JSON list
+    implicates TEXT NOT NULL                        -- JSON list of character ids; solver data
 );
 CREATE TABLE knowledge (
     character_id TEXT NOT NULL, clue_id TEXT NOT NULL,
