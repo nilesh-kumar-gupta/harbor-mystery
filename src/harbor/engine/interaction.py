@@ -31,7 +31,7 @@ def attempt_row(game, interaction_id, attempt):
                              (interaction_id, attempt)).fetchone()
 
 
-def validate(game, interaction_id, attempt, phases):
+def validate(game, interaction_id, attempt, phases, *, active=True):
     row = get(game, interaction_id)
     if row is None:
         return "unknown interaction"
@@ -40,7 +40,7 @@ def validate(game, interaction_id, attempt, phases):
         return "stale interaction"
     if row["attempt"] != attempt:
         return "wrong attempt"
-    if row["character_id"] != state.read(game)["active_character"]:
+    if active and row["character_id"] != state.read(game)["active_character"]:
         return "inactive character"
     if row["status"] not in phases:
         return "wrong interaction state"
@@ -128,6 +128,8 @@ def submit_draft(game, iid, attempt, text):
     problem = validate(game, iid, attempt, ("drafting", "evaluating"))
     if problem:
         return {"ok": False, "error": problem}
+    if not isinstance(text, str):
+        return {"ok": False, "error": "draft must be a string"}
     old = attempt_row(game, iid, attempt)["draft"]
     if old is not None:
         if old != text:
@@ -141,6 +143,8 @@ def submit_verdict(game, iid, attempt, verdict, reason=""):
     problem = validate(game, iid, attempt, ("evaluating",))
     if problem:
         return {"ok": False, "error": problem}
+    if not isinstance(verdict, str) or verdict not in ("OK", "LEAK", "INVALID"):
+        return {"ok": False, "error": "verdict must be OK, LEAK or INVALID"}
     row = attempt_row(game, iid, attempt)
     if row["verdict"] is not None:
         if (row["verdict"], row["verdict_reason"]) != (verdict, reason):
@@ -154,13 +158,17 @@ def stored_result(game, row):
     return {"ok": True, "status": "committed", "reply": row["reply"],
             "fallback": bool(row["fallback"]), "outcome": row["outcome"],
             "new_clues": json.loads(row["new_clues"]), "attempts": row["attempt"],
-            "clock": state.clock_text(state.read(game)["clock"])}
+            "clock": next(e["payload"]["clock"] for e in reversed(events.log(game.conn, game.run_id))
+                          if e["type"] in ("interaction_committed", "interaction_recovered")
+                          and e["payload"]["interaction_id"] == row["interaction_id"])}
 
 
-def _commit(game, row, reply, fallback, outcome, new_clues, recovered=False):
-    state.say(game, row["character_id"], "npc", reply)
+def _commit(game, row, reply, fallback, outcome, new_clues, recovered=False, said=False):
+    if not said:
+        state.say(game, row["character_id"], "npc", reply)
     _record(game, "interaction_recovered" if recovered else "interaction_committed", row,
-            reply=reply, fallback=fallback, outcome=outcome, new_clues=new_clues)
+            reply=reply, fallback=fallback, outcome=outcome, new_clues=new_clues,
+            clock=state.clock_text(state.read(game)["clock"]))
     return stored_result(game, get(game, row["interaction_id"]))
 
 
@@ -170,11 +178,15 @@ def finalize(game, iid, check, tool_limit=False):
         return {"ok": False, "error": "unknown interaction"}
     if row["status"] in ("committed", "abandoned"):
         return {**stored_result(game, row), "already_finalized": True}
-    problem = validate(game, iid, row["attempt"], ("pending", "drafting", "evaluating"))
+    problem = validate(game, iid, row["attempt"], ("pending", "drafting", "evaluating"), active=False)
     if problem:
         return {"ok": False, "error": problem}
     draft = attempt_row(game, iid, row["attempt"])
     leaked = []
+    if row["character_id"] != state.read(game)["active_character"]:
+        _record(game, "attempt_closed", row, outcome="interrupted")
+        card = rules.resolve_character(game, row["character_id"])
+        return _commit(game, row, card["fallback_line"], True, "interrupted", [])
     if tool_limit:
         outcome = "tool_limit"
     elif not draft["draft"] or not draft["draft"].strip():
@@ -182,20 +194,25 @@ def finalize(game, iid, check, tool_limit=False):
     else:
         try:
             with overlay(game, draft):
+                pass
+        except ValueError:
+            outcome = "invalid_action"
+        else:
+            with overlay(game, draft):
                 verdict = check(game, row["character_id"], row["player_message"], draft["draft"])
             leaked = verdict.leaked
             outcome = ("code_leak" if not verdict.ok else
                        {"OK": "accepted", "LEAK": "model_leak", "INVALID": "invalid_verdict", None: "no_verdict"}.get(draft["verdict"], "invalid_verdict"))
-        except ValueError:
-            outcome = "code_leak"  # staged actions that no longer validate fail closed
     before = state.found_clue_ids(game)
     if outcome == "accepted":
         for action in json.loads(draft["staged"]):
             apply_action(game, row, action["action"], action["args"])
+    if outcome == "accepted":
+        state.say(game, row["character_id"], "npc", draft["draft"])
     _record(game, "attempt_closed", row, outcome=outcome, leaked=leaked)
     if outcome == "accepted":
         return _commit(game, row, draft["draft"], False, outcome,
-                       sorted(state.found_clue_ids(game) - before))
+                       sorted(state.found_clue_ids(game) - before), said=True)
     if row["attempt"] < 3:
         note = LEAK_NOTE if outcome in ("code_leak", "model_leak") else CHECK_FAILED_NOTE
         _record(game, "attempt_started", {"interaction_id": iid, "attempt": row["attempt"] + 1}, note=note)

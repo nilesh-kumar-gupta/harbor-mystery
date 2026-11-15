@@ -150,3 +150,86 @@ def test_write_guard_and_unknown_finalize(lifecycle):
     with pytest.raises(events.WriteOutsideTool):
         interaction.begin(game, "mira", "hello")
     assert not finalize(game, run, "missing")["ok"]
+
+
+def test_inactive_character_finalizes_fallback(lifecycle):
+    game, run = lifecycle
+    iid = begin(game, run)
+    run(lambda: events.record(game, "player_moved", {"to": "office"}) or {"ok": True})
+    assert not run(lambda: interaction.stage(game, iid, 1, "reveal_clue", {"clue_id": "C3"}))["ok"]
+    out = finalize(game, run, iid)
+    assert out["status"] == "committed" and out["fallback"]
+    assert out["reply"] == game.conn.execute("SELECT fallback_line FROM characters WHERE id='mira'").fetchone()[0]
+    assert interaction.opened(game) is None
+
+
+def test_engine_rejects_null_draft_and_unparsed_verdict(lifecycle):
+    game, run = lifecycle
+    iid = begin(game, run)
+    assert not run(lambda: interaction.submit_draft(game, iid, 1, None))["ok"]
+    assert run(lambda: interaction.submit_draft(game, iid, 1, "Morning."))["ok"]
+    for verdict in (None, " OK ", {}, "ok"):
+        assert not run(lambda: interaction.submit_verdict(game, iid, 1, verdict))["ok"]
+    assert run(lambda: interaction.submit_verdict(game, iid, 1, "INVALID"))["ok"]
+    assert not run(lambda: interaction.submit_verdict(game, iid, 1, "OK"))["ok"]
+    assert finalize(game, run, iid)["reason_code"] == "invalid_verdict"
+    assert sum(e["type"] == "draft_submitted" for e in events.log(game.conn, game.run_id)) == 1
+
+
+def test_invalid_action_is_distinct_and_check_errors_are_not_mislabelled(lifecycle, monkeypatch):
+    game, run = lifecycle
+    iid = begin(game, run)
+    run(lambda: interaction.stage(game, iid, 1, "reveal_clue", {"clue_id": "C3"}))
+    run(lambda: interaction.submit_draft(game, iid, 1, "Morning."))
+    run(lambda: interaction.submit_verdict(game, iid, 1, "OK"))
+    def invalid(*args):
+        raise ValueError("no longer valid")
+    with monkeypatch.context() as patch:
+        patch.setattr(interaction, "apply_action", invalid)
+        assert finalize(game, run, iid)["reason_code"] == "invalid_action"
+    assert interaction.attempt_row(game, iid, 2)["note"] == interaction.CHECK_FAILED_NOTE
+    run(lambda: interaction.start_npc(game, iid, 2))
+    run(lambda: interaction.submit_draft(game, iid, 2, "Morning."))
+    out = run(lambda: interaction.finalize(game, iid, invalid))
+    assert not out["ok"]
+    assert interaction.attempt_row(game, iid, 2)["outcome"] is None
+
+
+def test_acceptance_event_order_and_original_clock(lifecycle):
+    game, run = lifecycle
+    iid = begin(game, run)
+    run(lambda: interaction.submit_draft(game, iid, 1, "Morning."))
+    run(lambda: interaction.submit_verdict(game, iid, 1, "OK"))
+    out = finalize(game, run, iid)
+    kinds = [e["type"] for e in events.log(game.conn, game.run_id)]
+    assert kinds[-3:] == ["line_said", "attempt_closed", "interaction_committed"]
+    run(lambda: (state.advance_clock(game, 5), {"ok": True})[1])
+    assert finalize(game, run, iid) == {**out, "already_finalized": True}
+
+
+@pytest.mark.parametrize("method,args", [
+    (interaction.stage, ("reveal_clue", {"clue_id": "C3"})),
+    (interaction.submit_draft, ("Morning.",)),
+    (interaction.submit_verdict, ("OK",)),
+])
+def test_wrong_attempt_and_stale_id_with_new_interaction(lifecycle, method, args):
+    game, run = lifecycle
+    iid = begin(game, run)
+    assert run(lambda: method(game, iid, 2, *args))["error"] == "wrong attempt"
+    run(lambda: interaction.recover(game))
+    begin(game, run)
+    assert run(lambda: method(game, iid, 1, *args))["error"] == "stale interaction"
+
+
+def test_next_attempt_overlay_cannot_see_rejected_trust(lifecycle):
+    game, run = lifecycle
+    begin(game, run)
+    run(lambda: interaction.recover(game))
+    iid = begin(game, run)
+    run(lambda: interaction.stage(game, iid, 1, "update_trust", {"reason": "polite_repeat"}))
+    finalize(game, run, iid)
+    def inspect():
+        with interaction.overlay(game, interaction.attempt_row(game, iid, 2)):
+            assert state.trust_of(game, "mira") == 0
+        return {"ok": True}
+    run(inspect)
