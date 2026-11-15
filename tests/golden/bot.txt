@@ -1,6 +1,6 @@
 > look
 Harbor Quay [06:05]
-A long stone quay, slick with morning damp and strung with drying nets. The hired dredger rides idle at her mooring, her winch hanging slack.
+A long stone quay, slick with morning damp and strung with drying nets. The dredger rides idle at her mooring, her winch hanging slack.
 You notice: The winch cable was cut clean, and the pins were knocked loose. [C1]
 Here: Mira Tolle.
 Exits: Harbormaster's Office, Fish Market, Chandlery.
@@ -68,7 +68,7 @@ A low-beamed tavern smelling of pipe smoke and last night's ale, its shutters st
 Here: Hale Pruitt.
 Exits: Fish Market.
 > talk Hale Pruitt: What did you notice last night?
-Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Odrin chaired that meeting. He'll tell you who shouted the loudest." [08:35]
+Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Odrin chaired that meeting. He'll tell you who shouted loudest." [08:35]
 (New clue in your notebook: C2)
 > notebook
 C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)

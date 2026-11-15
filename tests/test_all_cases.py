@@ -30,7 +30,7 @@ BOT_TURN_LIMIT = 40          # as in test_bot_player: the bot must win in under 
 
 # Clue keywords in text every character's prompt can draw on (premise, place
 # descriptions), so a natural reply may trip them. Listed when deliberate.
-INTENDED_SHARED_KEYWORDS: dict = {}
+INTENDED_SHARED_KEYWORDS: dict[str, set] = {}
 
 # Clue keywords that occur in a character's own persona or speech style on purpose.
 # The referee ignores such a keyword for that character (ADR 002 #25), so each one
