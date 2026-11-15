@@ -71,3 +71,16 @@ def test_switch_has_no_old_guard(persistent):
     assert not old.conn.in_transaction
     assert not tracer._stack and not tracer._pending
     old.conn.close()
+
+
+def test_resume_does_not_reset_action_cap(persistent):
+    ctx = persistent
+    call(ctx, "player_turn", line="hello")
+    for _ in range(3):
+        assert call(ctx, "look")["ok"]
+    old = ctx.game
+    assert call(ctx, "resume_game", run_id=old.run_id)["ok"]
+    assert call(ctx, "player_turn", line="continue")["ok"]
+    assert call(ctx, "look")["error"] == "game master tool limit"
+    assert not old.tracer._virtual
+    old.conn.close()

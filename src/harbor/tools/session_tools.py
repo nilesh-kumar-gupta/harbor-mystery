@@ -67,10 +67,12 @@ def prepare(ctx, name, args):
     tracer = Tracer(game.conn, game.run_id, home() / "traces" / f"{game.run_id}.jsonl")
     if ctx.tracer is not None:
         ctx.tracer._virtual.clear()
+    same_run = ctx.game is not None and ctx.game.run_id == game.run_id
     ctx.game, ctx.tracer = game, tracer
     game.tracer = tracer
-    ctx.counts.clear()
-    ctx.limited.clear()
+    if not same_run:
+        ctx.counts.clear()
+        ctx.limited.clear()
     ctx.turn_open = False
     ctx.trace_warning_seen = 0
 
