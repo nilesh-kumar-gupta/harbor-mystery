@@ -29,7 +29,7 @@ FILES = (COMMAND, GAME_MASTER, NPC, REFEREE)
 # checked against the ADR 004 section 2.8 table instead of the registry.
 # EMPTY THIS SET WHEN PHASE 2 IS MERGED: test_pending_tools_are_not_registered_yet
 # fails as soon as the registry has any of them, to force that.
-PENDING_PHASE_2 = {"new_game", "resume_game", "game_status"}
+PENDING_PHASE_2 = set()
 
 
 def adr_audiences():

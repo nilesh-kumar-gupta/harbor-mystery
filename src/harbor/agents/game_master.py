@@ -16,7 +16,7 @@ from harbor.commands import render
 from harbor.llm.base import LLMClient
 from harbor.tools import REGISTRY, Context
 from harbor.tools.gm_tools import state_summary
-from harbor.tools.registry import _check_arguments, error
+from harbor.tools.registry import check_arguments, error
 
 MAX_TOOL_CALLS = 3
 CAP_LINE = "(Too much at once. Try one thing at a time.)"
@@ -39,6 +39,9 @@ class GameMaster:
 
     def run_turn(self, ctx: Context, line: str) -> TurnResult:
         started = REGISTRY.call(ctx, "player_turn", {"line": line}, "gm")
+        if not started.get("ok"):
+            status = state_summary(ctx)["status"]
+            return TurnResult(started["error"], status=status, end=started)
         turn = started.get("turn", 0)
         attrs = {"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": "game_master",
                  "game.turn": turn}
@@ -62,9 +65,8 @@ class GameMaster:
                 narration = "\n".join([CAP_LINE] + [render(n, r) for n, _, r in out.tool_results])
             elif not narration:  # no words from the model: show the tool results plainly
                 narration = "\n".join(render(n, r) for n, _, r in out.tool_results)
-            gm_span = ctx.tracer._virtual.get(f"{ctx.tracer.trace_id}-gm")
-            if gm_span:
-                gm_span.status, gm_span.output = span.status, {"narration": narration, "capped": out.capped}
+            ctx.tracer.annotate_virtual(f"{ctx.tracer.trace_id}-gm", status=span.status,
+                                        output={"narration": narration, "capped": out.capped})
             end = REGISTRY.call(ctx, "close_turn", {}, "gm")
             span.output = {"narration": narration, "capped": out.capped}
         return TurnResult(narration, out.tool_results, end.get("status", "active"), end)
@@ -72,12 +74,15 @@ class GameMaster:
     def schemas(self):
         names = ("look", "go", "notebook", "begin_talk", "hint", "accuse")
         return [{"name": "talk" if n == "begin_talk" else n,
-                 "description": REGISTRY.get(n).description,
+                 "description": ("Talk to a present character and return their validated reply. Costs 10 minutes."
+                                 if n == "begin_talk" else REGISTRY.get(n).description),
                  "input_schema": REGISTRY.get(n).input_schema} for n in names]
 
     def execute(self, ctx, name, args):
+        if name not in {s["name"] for s in self.schemas()}:
+            return error(f"unknown tool {name!r}")
         if name == "talk":
-            problem = _check_arguments(REGISTRY.get("begin_talk").input_schema, args)
+            problem = check_arguments(REGISTRY.get("begin_talk").input_schema, args)
             if problem:
                 return error(problem)
             return conversation.run(ctx, self.npc_llm, self.referee_llm, **args)

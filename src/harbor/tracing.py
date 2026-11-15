@@ -11,6 +11,7 @@ a span opened while another is open becomes its child unless a parent is named.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from contextlib import contextmanager
@@ -58,8 +59,9 @@ class Tracer:
         self._stack: list[Span] = []
         self._pending: list[tuple[Span, float]] = []
         # continue numbering after spans already in this database for this run
-        self._count = conn.execute(
-            "SELECT COUNT(*) FROM spans WHERE run_id = ?", (run_id,)).fetchone()[0]
+        self._count = max((int(match.group(1)) for row in conn.execute(
+            "SELECT span_id FROM spans WHERE run_id = ?", (run_id,))
+            if (match := re.fullmatch(re.escape(run_id) + r"-s(\d+)", row[0]))), default=0)
         if self.jsonl_path:
             self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -140,6 +142,16 @@ class Tracer:
         self._pending.append((span, self._clock()))
         if not self._stack:
             self.flush()
+
+    def close_open(self, status="interrupted"):
+        """Finish every virtual span before abandoning a session."""
+        for sid in list(self._virtual):
+            self.close_virtual(sid, status=status)
+
+    def annotate_virtual(self, span_id, *, status, output):
+        span = self._virtual.get(span_id)
+        if span is not None:
+            span.status, span.output = status, output
 
     def amend(self, span: Span, **fields) -> None:
         """Change a closed span before it is written, e.g. mark a draft `rejected`

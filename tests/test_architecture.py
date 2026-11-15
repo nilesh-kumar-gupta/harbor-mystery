@@ -8,6 +8,7 @@ from harbor.tools import REGISTRY
 SRC = Path(__file__).parent.parent / "src" / "harbor"
 # layer -> harbor subpackages or modules it must not import
 FORBIDDEN = {
+    "mcp_server": {"agents", "engine", "cli", "bot", "offline"},
     "engine": {"agents", "tools", "llm", "cli", "referee", "bot", "session", "offline",
                "commands"},
     "tools": {"agents", "cli", "bot", "session", "offline"},
@@ -91,7 +92,7 @@ def test_npc_tools_cannot_name_a_character():
 
 
 def test_engine_steps_are_never_offered_to_a_model():
-    offered = {s["name"] for a in ("gm", "npc") for s in REGISTRY.schemas(a)}
+    offered = {s["name"] for a in ("gm", "npc", "referee") for s in REGISTRY.schemas(a)}
     assert not offered & set(REGISTRY.names("engine"))
 
 
@@ -107,3 +108,22 @@ def test_only_the_reducer_writes_run_tables():
     write = r"\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+(\w+)"
     assert re.findall(write, state_src) == ["runs"]
     assert set(re.findall(write, (SRC / "tracing.py").read_text(encoding="utf-8"))) == {"spans"}
+
+
+def test_only_turn_and_session_boundaries_call_engine_steps():
+    step_names = set(REGISTRY.names("engine"))
+    wrappers = set()
+    for audience in ("gm", "npc", "referee"):
+        for name in REGISTRY.names(audience):
+            tool = REGISTRY.get(name)
+            tree = ast.parse(__import__("inspect").getsource(tool.func))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    if ((isinstance(node.func, ast.Name) and node.func.id in step_names)
+                            or (isinstance(node.func, ast.Attribute) and node.func.attr in step_names)):
+                        wrappers.add(name)
+                    if (isinstance(node.func, ast.Attribute) and node.func.attr == "call"
+                            and len(node.args) > 1 and isinstance(node.args[1], ast.Constant)
+                            and node.args[1].value in step_names):
+                        wrappers.add(name)
+    assert wrappers == {"close_turn", "new_game", "resume_game"}

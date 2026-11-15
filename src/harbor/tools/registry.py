@@ -25,14 +25,18 @@ _JSON_TYPES = {"string": str, "array": list, "integer": int, "object": dict}
 class Context:
     """Run collaborators and process-local call limits; no agent callbacks."""
 
-    game: Game
+    game: Game | None = None
     tracer: Tracer | None = None
     counts: dict = field(default_factory=dict)
     limited: set = field(default_factory=set)
+    require_turn: bool = False
     turn_open: bool = False
     trace_warning_seen: int = 0
+    lease: object = None
 
     def __post_init__(self) -> None:
+        if self.game is None:
+            return
         # one tracer per run, so span ids never collide between contexts
         if self.tracer is None:
             self.tracer = self.game.tracer or Tracer(self.game.conn, self.game.run_id)
@@ -52,6 +56,7 @@ class Tool:
     description: str
     input_schema: dict
     func: Callable[..., dict]
+    session: bool = False
     when_ended: bool = False  # may run after the game is over
 
 
@@ -65,14 +70,14 @@ class Registry:
 
     def tool(self, name: str, audience: str, description: str,
              properties: dict | None = None, required: tuple[str, ...] = (),
-             when_ended: bool = False):
+             when_ended: bool = False, session: bool = False):
         """Decorator: register `func(ctx, **arguments) -> dict` under `name`."""
         assert audience in AUDIENCES
         schema = {"type": "object", "properties": properties or {},
                   "required": list(required), "additionalProperties": False}
 
         def register(func):
-            self._tools[name] = Tool(name, audience, description, schema, func, when_ended)
+            self._tools[name] = Tool(name, audience, description, schema, func, session, when_ended)
             return func
         return register
 
@@ -87,7 +92,7 @@ class Registry:
         return [{"name": t.name, "description": t.description, "input_schema": t.input_schema}
                 for t in self._tools.values() if t.audience == audience]
 
-    def call(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
+    def call(self, ctx: Context, name: str, arguments: dict | None, audience: str, *, meta: dict | None = None) -> dict:
         """Run one tool for a caller of the given audience, inside a tool_call span.
 
         Never raises: every failure comes back as {"ok": false, "error": ...}. A call
@@ -95,6 +100,22 @@ class Registry:
         wrote is rolled back, so an error always means "nothing changed". Spans are
         not lost by a rollback: the tracer writes them once the root span closes.
         """
+        tool = self.get(name) if isinstance(name, str) else None
+        if tool and tool.session:
+            if tool.audience != audience:
+                return error(f"unknown tool {name!r}")
+            problem = check_arguments(tool.input_schema, arguments)
+            if problem:
+                return error(problem)
+            try:
+                from harbor.tools.session_tools import prepare
+                result = prepare(ctx, name, arguments or {})
+            except Exception as exc:
+                return error(f"cannot load game: {type(exc).__name__}: {exc}")
+            if result is not None:
+                return result
+        if ctx.game is None:
+            return error("no game loaded")
         game = ctx.game
         try:
             st = state.read(game)
@@ -103,7 +124,7 @@ class Registry:
         previous = None
         valid_turn = (name == "player_turn" and audience == "gm" and st
                       and not state.is_over(game)
-                      and _check_arguments(self.get("player_turn").input_schema, arguments) is None)
+                      and check_arguments(self.get("player_turn").input_schema, arguments) is None)
         if valid_turn and ctx.turn_open:
             previous = self.call(ctx, "close_turn", {}, "gm")
             if not previous.get("ok"):
@@ -113,13 +134,17 @@ class Registry:
             ctx.begin_turn()
         attrs = {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": str(name),
                  "game.turn": st["turn"] if st else 0, "game.audience": audience}
+        if meta is not None:
+            attrs.update({"mcp.meta": meta, "harbor.model_metadata": "unavailable"})
         parent_id = None
         args = arguments if isinstance(arguments, dict) else {}
         iid, attempt = args.get("interaction_id"), args.get("attempt")
         if iid and attempt:
             attrs.update({"game.interaction_id": iid, "game.attempt": attempt})
-            parent_id = f"{iid}-a{attempt}-{'npc' if audience == 'npc' else 'ref'}"
-        elif ctx.turn_open or name == "player_turn":
+            candidate = f"{iid}-a{attempt}-{'npc' if audience == 'npc' else 'ref'}"
+            if candidate in ctx.tracer._virtual:
+                parent_id = candidate
+        if parent_id is None and (ctx.turn_open or name == "player_turn"):
             parent_id = f"{ctx.tracer.trace_id}-gm"
         with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs,
                              parent_id=parent_id) as span:
@@ -138,6 +163,9 @@ class Registry:
                 if result is None or not result.get("ok"):  # None: interrupted, re-raising
                     game.conn.execute(f"ROLLBACK TO {savepoint}")
                 game.conn.execute(f"RELEASE {savepoint}")
+            if iid and attempt and candidate in ctx.tracer._virtual:
+                span.parent_span_id = candidate
+                span.trace_id = ctx.tracer._virtual[candidate].trace_id
             if name == "close_turn" and result.get("ok"):
                 sid = f"{ctx.tracer.trace_id}-gm"
                 if sid in ctx.tracer._virtual:
@@ -147,6 +175,9 @@ class Registry:
                 result["previous"] = previous
             if name == "begin_talk" and result.get("ok"):
                 span.attrs.update({"game.interaction_id": result["interaction_id"], "game.attempt": 1})
+            if result.get("ok") and state.is_over(game) and ctx.lease is not None:
+                from harbor.tools.session_tools import release_lease
+                release_lease(ctx)
             span.output = result
             span.status = "ok" if result.get("ok") else "error"
             if ctx.tracer.trace_failures > ctx.trace_warning_seen:
@@ -155,6 +186,9 @@ class Registry:
             return result
 
     def _run(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
+        tool = self.get(name) if isinstance(name, str) else None
+        if tool and tool.session:
+            return tool.func(ctx, **(arguments or {}))
         game = ctx.game
         if audience != "engine" and name not in ("close_turn", "finalize_talk") and state.read(game) is not None and state.is_over(game):
             return error("game over")
@@ -162,8 +196,11 @@ class Registry:
         current = interaction.opened(game)
         if audience == "gm" and current and name not in ("finalize_talk", "notebook"):
             return error("finish the conversation first", interaction_id=current["interaction_id"])
+        if (audience == "gm" and ctx.require_turn and not ctx.turn_open
+                and name not in ("player_turn", "close_turn", "finalize_talk", "notebook")):
+            return error("start a player turn first")
         if audience == "gm" and ctx.turn_open and name not in ("player_turn", "close_turn", "finalize_talk", "notebook"):
-            key = ("gm", state.read(game)["turn"])
+            key = (game.run_id, "gm", state.read(game)["turn"])
             ctx.counts[key] = ctx.counts.get(key, 0) + 1
             if ctx.counts[key] > 3:
                 return error("game master tool limit")
@@ -176,14 +213,14 @@ class Registry:
                 problem = interaction.validate(game, iid, attempt, ("drafting",))
                 if problem:
                     return error(problem)
-                key = (iid, attempt)
+                key = (game.run_id, iid, attempt)
                 ctx.counts[key] = ctx.counts.get(key, 0) + 1
                 if ctx.counts[key] > 4:
                     ctx.limited.add(key)
                     return error("NPC tool limit")
         if tool is None or tool.audience != audience:
             return error(f"unknown tool {name!r}", tools=self.names(audience))
-        problem = _check_arguments(tool.input_schema, arguments)
+        problem = check_arguments(tool.input_schema, arguments)
         if problem:
             return error(problem)
         game = ctx.game
@@ -199,7 +236,7 @@ class Registry:
         return tool.func(ctx, **(arguments or {}))
 
 
-def _check_arguments(schema: dict, arguments: Any) -> str | None:
+def check_arguments(schema: dict, arguments: Any) -> str | None:
     if arguments is None:
         arguments = {}
     if not isinstance(arguments, dict):

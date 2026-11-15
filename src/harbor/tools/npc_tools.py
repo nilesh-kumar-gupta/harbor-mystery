@@ -42,5 +42,7 @@ def update_trust(ctx, interaction_id, attempt, reason):
     elif result.get("error") not in ("unknown interaction", "stale interaction", "wrong attempt", "wrong interaction state"):
         row = interaction.get(ctx.game, interaction_id)
         if row:
-            result["trust"] = read(ctx, interaction_id, attempt, lambda who: state.trust_of(ctx.game, who))
+            trust = read(ctx, interaction_id, attempt, lambda who: state.trust_of(ctx.game, who))
+            if type(trust) is int:
+                result["trust"] = trust
     return result

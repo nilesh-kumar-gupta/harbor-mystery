@@ -54,7 +54,7 @@ def npc_context(ctx, interaction_id, attempt):
     return {"ok": True, **{k: card[k] for k in ("id", "name", "role", "persona", "speech_style")},
             "player_message": row["player_message"],
             "note": interaction.attempt_row(ctx.game, interaction_id, attempt)["note"],
-            "calls_left": max(0, 4 - ctx.counts.get((interaction_id, attempt), 0))}
+            "calls_left": max(0, 4 - ctx.counts.get((ctx.game.run_id, interaction_id, attempt), 0))}
 
 
 @REGISTRY.tool("submit_draft", "npc", "Submit your reply for evaluation.",
@@ -63,7 +63,7 @@ def submit_draft(ctx, interaction_id, attempt, text):
     result = interaction.submit_draft(ctx.game, interaction_id, attempt, text)
     if result["ok"]:
         span = virtual(ctx, interaction_id, attempt, "npc")
-        span.output = {"text": text, "capped": (interaction_id, attempt) in ctx.limited}
+        span.output = {"text": text, "capped": (ctx.game.run_id, interaction_id, attempt) in ctx.limited}
     return result
 
 
@@ -79,7 +79,7 @@ def referee_context(ctx, interaction_id, attempt):
     with interaction.overlay(game, draft):
         verdict = referee.code_check(game, row["character_id"], row["player_message"], draft["draft"])
         virtual(ctx, interaction_id, attempt, "referee").attrs["referee.code_check"] = "pass" if verdict.ok else "leak"
-        return {"ok": True, **referee.referee_context(game, rules.resolve_character(game, row["character_id"]),
+        return {"ok": True, "code_check": "pass" if verdict.ok else "leak", **referee.referee_context(game, rules.resolve_character(game, row["character_id"]),
                                                      row["player_message"], draft["draft"])}
 
 
@@ -107,7 +107,7 @@ def finalize_talk(ctx, interaction_id):
     attempt = row["attempt"]
     first = game.conn.execute("SELECT COALESCE(MAX(seq),0) FROM events WHERE run_id=?", (game.run_id,)).fetchone()[0] + 1
     result = interaction.finalize(game, interaction_id, referee.code_check,
-                                  tool_limit=(interaction_id, attempt) in ctx.limited)
+                                  tool_limit=(ctx.game.run_id, interaction_id, attempt) in ctx.limited)
     if not result["ok"]:
         return result
     draft = interaction.attempt_row(game, interaction_id, attempt)
@@ -121,7 +121,7 @@ def finalize_talk(ctx, interaction_id):
     code = "leak" if outcome == "code_leak" else "pass" if draft["draft"] else "skipped: no draft"
     ref.attrs.update({"referee.code_check": code, "referee.verdict": draft["verdict"] or "missing",
                       "referee.model_error": model_error, "game.leaked_clues": json.loads(draft["leaked"] or "[]")})
-    ref.attrs.setdefault("referee.verdict_source", "mcp")
+    ref.attrs.setdefault("referee.verdict_source", "mcp" if draft["verdict"] else "none")
     ref.attrs["referee.model_check"] = ("skipped: code check failed" if code == "leak" else
         "error" if model_error else "pass" if draft["verdict"] == "OK" else "leak" if draft["verdict"] == "LEAK" else "invalid" if draft["verdict"] else "missing")
     status = "error" if model_error else "ok" if outcome == "accepted" else "rejected"
