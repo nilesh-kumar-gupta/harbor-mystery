@@ -16,6 +16,7 @@ from harbor.commands import render
 from harbor.llm.base import LLMClient
 from harbor.tools import REGISTRY, Context
 from harbor.tools.gm_tools import state_summary
+from harbor.tools.registry import _check_arguments, error
 
 MAX_TOOL_CALLS = 3
 CAP_LINE = "(Too much at once. Try one thing at a time.)"
@@ -76,5 +77,8 @@ class GameMaster:
 
     def execute(self, ctx, name, args):
         if name == "talk":
+            problem = _check_arguments(REGISTRY.get("begin_talk").input_schema, args)
+            if problem:
+                return error(problem)
             return conversation.run(ctx, self.npc_llm, self.referee_llm, **args)
         return REGISTRY.call(ctx, name, args, "gm")

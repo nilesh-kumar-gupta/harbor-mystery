@@ -242,7 +242,8 @@ def test_npc_tools_need_an_active_character(ctx):
 
 
 def test_npc_tools_refuse_a_character_argument(offline_npc):
-    talk(offline_npc, "mira", "hello")
+    from conftest import open_npc
+    open_npc(offline_npc, "mira")
     out = REGISTRY.call(offline_npc, "recall_knowledge", {**active_ids(offline_npc), "character": "tom"}, "npc")
     assert out == {"ok": False, "error": "unexpected argument 'character'"}
 

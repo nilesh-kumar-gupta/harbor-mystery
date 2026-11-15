@@ -189,3 +189,29 @@ def test_malformed_new_turn_does_not_close_previous_turn(ctx):
     assert not call(ctx, "player_turn", line=17)["ok"]
     assert ctx.turn_open and state.read(ctx.game)["turn"] == 1
     assert events.log(ctx.game.conn, ctx.game.run_id) == before
+
+
+def test_malformed_and_unknown_npc_calls_cannot_evade_attempt_cap(ctx):
+    ids = begin(ctx)
+    call(ctx, "npc_context", "npc", **ids)
+    for name, args in (("reveal_clue", {}), ("update_trust", {"reason": "made_up"}),
+                       ("recall_knowledge", {"character": "tom"}), ("invent_fact", {})):
+        assert not call(ctx, name, "npc", **ids, **args)["ok"]
+    assert call(ctx, "recall_knowledge", "npc", **ids)["error"] == "NPC tool limit"
+    assert finalize(ctx, ids)["reason_code"] == "tool_limit"
+
+
+def test_unknown_gm_actions_count_towards_cap(ctx):
+    call(ctx, "player_turn", line="hello")
+    for _ in range(3):
+        assert not call(ctx, "invent_fact")["ok"]
+    assert call(ctx, "look")["error"] == "game master tool limit"
+
+
+def test_virtual_talk_returns_schema_errors_as_values(ctx):
+    from harbor.agents.game_master import GameMaster
+    gm = GameMaster(ScriptedLLM([]), ScriptedLLM([]))
+    before = events.log(ctx.game.conn, ctx.game.run_id)
+    assert gm.execute(ctx, "talk", {"character": "mira"})["error"] == "missing argument 'message'"
+    assert gm.execute(ctx, "talk", {"character": "mira", "message": 3})["error"] == "argument 'message' must be of type string"
+    assert events.log(ctx.game.conn, ctx.game.run_id) == before

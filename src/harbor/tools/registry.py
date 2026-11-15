@@ -159,8 +159,6 @@ class Registry:
         if audience != "engine" and name not in ("close_turn", "finalize_talk") and state.read(game) is not None and state.is_over(game):
             return error("game over")
         tool = self._tools.get(name) if isinstance(name, str) else None
-        if tool is None or tool.audience != audience:
-            return error(f"unknown tool {name!r}", tools=self.names(audience))
         current = interaction.opened(game)
         if audience == "gm" and current and name not in ("finalize_talk", "notebook"):
             return error("finish the conversation first", interaction_id=current["interaction_id"])
@@ -169,19 +167,25 @@ class Registry:
             ctx.counts[key] = ctx.counts.get(key, 0) + 1
             if ctx.counts[key] > 3:
                 return error("game master tool limit")
+        if audience == "npc" and name not in ("npc_context", "submit_draft"):
+            # Bind failed calls to the current valid attempt before checking the
+            # gameplay schema, so malformed arguments cannot evade the cap.
+            args = arguments if isinstance(arguments, dict) else {}
+            iid, attempt = args.get("interaction_id"), args.get("attempt")
+            if isinstance(iid, str) and type(attempt) is int:
+                problem = interaction.validate(game, iid, attempt, ("drafting",))
+                if problem:
+                    return error(problem)
+                key = (iid, attempt)
+                ctx.counts[key] = ctx.counts.get(key, 0) + 1
+                if ctx.counts[key] > 4:
+                    ctx.limited.add(key)
+                    return error("NPC tool limit")
+        if tool is None or tool.audience != audience:
+            return error(f"unknown tool {name!r}", tools=self.names(audience))
         problem = _check_arguments(tool.input_schema, arguments)
         if problem:
             return error(problem)
-        if audience == "npc" and name in ("recall_knowledge", "recall_conversation", "reveal_clue", "update_trust"):
-            iid, attempt = arguments["interaction_id"], arguments["attempt"]
-            problem = interaction.validate(game, iid, attempt, ("drafting",))
-            if problem:
-                return error(problem)
-            key = (iid, attempt)
-            ctx.counts[key] = ctx.counts.get(key, 0) + 1
-            if ctx.counts[key] > 4:
-                ctx.limited.add(key)
-                return error("NPC tool limit")
         game = ctx.game
         started = state.read(game) is not None
         if name != "start_run" and not started:
