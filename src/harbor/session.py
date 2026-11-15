@@ -32,6 +32,15 @@ class Session:
         REGISTRY.call(ctx, "start_run", {}, "engine")
         return cls(ctx=ctx, gm=GameMaster(llms["gm"], llms["npc"], llms.get("referee")))
 
+    def close(self):
+        """Release persistent ownership and close this session's database."""
+        from harbor.tools.session_tools import release_lease
+        if self.ctx.tracer is not None:
+            self.ctx.tracer.close_open()
+        if self.ctx.game is not None:
+            self.ctx.game.conn.close()
+        release_lease(self.ctx)
+
     def turn(self, line: str) -> TurnResult:
         return self.gm.run_turn(self.ctx, line)
 

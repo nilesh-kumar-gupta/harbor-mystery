@@ -7,10 +7,10 @@ from harbor.tools.steps import end_turn
 
 @REGISTRY.tool("player_turn", "gm", "Start a player turn.", {"line": {"type": "string"}}, ("line",))
 def player_turn(ctx, line):
-    ctx.turn_open = True
     turn = state.read(ctx.game)["turn"]
     ctx.tracer.open_virtual("agent", "game_master", f"{ctx.tracer.trace_id}-gm", input=line,
                             attrs={"game.turn": turn, "gen_ai.agent.name": "game_master"})
+    ctx.turn_open = True
     return {"ok": True, "turn": turn, "trace_id": ctx.tracer.trace_id,
             "state": state_summary(ctx)}
 

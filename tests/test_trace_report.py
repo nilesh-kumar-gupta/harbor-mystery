@@ -87,3 +87,26 @@ def test_empty_run(tmp_path, monkeypatch):
     assert result["completion_rate"] == result["fallback_rate"] == 0
     assert result["attempts_per_interaction"] == {}
     ctx.game.conn.close()
+
+
+def test_missing_verdicts_exclude_code_leaks_and_recovery(tmp_path, monkeypatch):
+    monkeypatch.setenv("HARBOR_HOME", str(tmp_path))
+    ctx = Context()
+    call(ctx, "new_game")
+    call(ctx, "player_turn", line="hello")
+    iid = call(ctx, "begin_talk", character="Mira", message="hello")["interaction_id"]
+    ids = {"interaction_id": iid, "attempt": 1}
+    call(ctx, "npc_context", **ids)
+    text = ctx.game.conn.execute("SELECT text FROM clues WHERE id='C5'").fetchone()[0]
+    call(ctx, "submit_draft", **ids, text=text)
+    call(ctx, "finalize_talk", interaction_id=iid)
+    assert ctx.game.conn.execute("SELECT outcome FROM attempts WHERE attempt=1").fetchone()[0] == "code_leak"
+    call(ctx, "resume_game", run_id=ctx.game.run_id)
+    result = module.report(call(ctx, "game_status")["db_path"])
+    assert result["outcomes"] == {"code_leak": 1, "interrupted": 1}
+    assert result["missing_verdicts"] == 0
+    assert result["mcp_meta_seen"] == [{"source": "test"}]
+    assert result["mcp_meta_count"] > 1
+    from harbor.tools.session_tools import release_lease
+    release_lease(ctx)
+    ctx.game.conn.close()

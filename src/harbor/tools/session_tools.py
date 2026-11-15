@@ -1,5 +1,6 @@
 """Registered session tools; select the database before entering the tool guard."""
 import os
+import fcntl
 import random
 import uuid
 from pathlib import Path
@@ -10,6 +11,7 @@ from harbor.engine.case_loader import load_case
 from harbor.tools.registry import REGISTRY, error
 from harbor.tools.gm_tools import state_summary
 from harbor.tracing import Tracer
+from harbor.tools.steps import start_run, end_turn
 
 
 def home():
@@ -31,6 +33,29 @@ def open_game(path):
         raise
 
 
+def release_lease(ctx):
+    if ctx.lease is not None:
+        ctx.lease.close()
+        ctx.lease = None
+
+
+def acquire_lease(path, run_id):
+    # Keep the inode: unlinking a locked file would permit two owners.
+    lease = Path(str(path) + ".lock").open("a+")
+    try:
+        fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lease.seek(0)
+        pid = lease.read().strip()
+        lease.close()
+        raise ValueError(f"run {run_id} is open in another session (pid {pid})")
+    lease.seek(0)
+    lease.truncate()
+    lease.write(str(os.getpid()))
+    lease.flush()
+    return lease
+
+
 def prepare(ctx, name, args):
     if name == "game_status":
         if ctx.game is None:
@@ -48,7 +73,13 @@ def prepare(ctx, name, args):
         run_id = uuid.uuid4().hex
         folder = home() / "runs"
         folder.mkdir(parents=True, exist_ok=True)
-        game = state.new_game(case, run_id, args.get("seed", 0), str(folder / f"{run_id}.sqlite"))
+        path = folder / f"{run_id}.sqlite"
+        lease = acquire_lease(path, run_id)
+        try:
+            game = state.new_game(case, run_id, args.get("seed", 0), str(path))
+        except Exception:
+            lease.close()
+            raise
     else:
         folder = home() / "runs"
         run_id = args.get("run_id")
@@ -63,16 +94,25 @@ def prepare(ctx, name, args):
             path = max(paths, key=lambda p: p.stat().st_mtime_ns)
         if not path.is_file():
             return error("unknown run")
-        game = open_game(path)
+        if ctx.game is not None and ctx.game.run_id == path.stem:
+            if ctx.tracer is not None:
+                ctx.tracer.close_open()
+            return None
+        lease = acquire_lease(path, path.stem)
+        try:
+            game = open_game(path)
+        except Exception:
+            lease.close()
+            raise
     tracer = Tracer(game.conn, game.run_id, home() / "traces" / f"{game.run_id}.jsonl")
+    old = ctx.game
     if ctx.tracer is not None:
-        ctx.tracer._virtual.clear()
-    same_run = ctx.game is not None and ctx.game.run_id == game.run_id
-    ctx.game, ctx.tracer = game, tracer
+        ctx.tracer.close_open()
+    release_lease(ctx)
+    ctx.game, ctx.tracer, ctx.lease = game, tracer, lease
     game.tracer = tracer
-    if not same_run:
-        ctx.counts.clear()
-        ctx.limited.clear()
+    if old is not None:
+        old.conn.close()
     ctx.turn_open = False
     ctx.trace_warning_seen = 0
 
@@ -80,7 +120,7 @@ def prepare(ctx, name, args):
 @REGISTRY.tool("new_game", "gm", "Start a new game.",
                {"seed": {"type": "integer"}, "case": {"type": "string"}}, session=True)
 def new_game(ctx, seed=0, case="saltmere"):
-    state.start(ctx.game)
+    start_run(ctx)
     meta = state.case_meta(ctx.game)
     return {"ok": True, "run_id": ctx.game.run_id, "title": meta["title"],
             "premise": meta["premise"], "help": HELP, **state_summary(ctx)}
@@ -119,5 +159,10 @@ def resume_game(ctx, run_id=None):
                        "harbor.start_time": "unavailable"})
             ctx.tracer.close_virtual(span.span_id, status="interrupted",
                                      output=recovered if current and row["interaction_id"] == current["interaction_id"] else None)
+    turn = state.read(game)["turn"]
+    sid = f"{game.run_id}-t{turn:04d}-gm"
+    if current or game.conn.execute("SELECT 1 FROM spans WHERE span_id=?", (sid,)).fetchone():
+        end_turn(ctx)
+    ctx.turn_open = False
     return {"ok": True, "run_id": game.run_id, "recovered": [recovered] if recovered else [],
             "summary": state_summary(ctx)}

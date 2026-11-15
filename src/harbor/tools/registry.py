@@ -32,6 +32,7 @@ class Context:
     require_turn: bool = False
     turn_open: bool = False
     trace_warning_seen: int = 0
+    lease: object = None
 
     def __post_init__(self) -> None:
         if self.game is None:
@@ -174,6 +175,9 @@ class Registry:
                 result["previous"] = previous
             if name == "begin_talk" and result.get("ok"):
                 span.attrs.update({"game.interaction_id": result["interaction_id"], "game.attempt": 1})
+            if result.get("ok") and state.is_over(game) and ctx.lease is not None:
+                from harbor.tools.session_tools import release_lease
+                release_lease(ctx)
             span.output = result
             span.status = "ok" if result.get("ok") else "error"
             if ctx.tracer.trace_failures > ctx.trace_warning_seen:
@@ -196,7 +200,7 @@ class Registry:
                 and name not in ("player_turn", "close_turn", "finalize_talk", "notebook")):
             return error("start a player turn first")
         if audience == "gm" and ctx.turn_open and name not in ("player_turn", "close_turn", "finalize_talk", "notebook"):
-            key = ("gm", state.read(game)["turn"])
+            key = (game.run_id, "gm", state.read(game)["turn"])
             ctx.counts[key] = ctx.counts.get(key, 0) + 1
             if ctx.counts[key] > 3:
                 return error("game master tool limit")
@@ -209,7 +213,7 @@ class Registry:
                 problem = interaction.validate(game, iid, attempt, ("drafting",))
                 if problem:
                     return error(problem)
-                key = (iid, attempt)
+                key = (game.run_id, iid, attempt)
                 ctx.counts[key] = ctx.counts.get(key, 0) + 1
                 if ctx.counts[key] > 4:
                     ctx.limited.add(key)

@@ -33,9 +33,10 @@ def report(path):
                 "outcomes": dict(outcomes), "fallbacks": fallback,
                 "fallback_rate": fallback / completed if completed else 0,
                 "invalid_verdicts": sum(a["verdict"] == "INVALID" for a in attempts),
-                "missing_verdicts": sum(a["verdict"] is None for a in attempts if a["status"] == "closed"),
+                "missing_verdicts": outcomes.get("no_verdict", 0),
                 "npc_tool_calls": sum(npc.values()), "npc_tool_calls_by_name": dict(npc),
-                "mcp_meta_seen": metadata,
+                "mcp_meta_seen": list({json.dumps(m, sort_keys=True): m for m in metadata}.values()),
+                "mcp_meta_count": len(metadata),
                 "first_word_latency": "unavailable"}
     finally:
         conn.close()

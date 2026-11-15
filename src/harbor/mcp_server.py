@@ -57,15 +57,22 @@ def main():
         for line in sys.stdin:
             try:
                 request = json.loads(line)
-            except (ValueError, UnicodeError):
+            except Exception:
                 response = rpc_error(None, -32700, "Parse error")
             else:
-                response = handle(ctx, request)
+                try:
+                    response = handle(ctx, request)
+                except Exception:
+                    response = rpc_error(request.get("id") if isinstance(request, dict) else None,
+                                         -32603, "Internal error")
             if response is not None:
                 print(json.dumps(response), flush=True)
     finally:
+        from harbor.tools.session_tools import release_lease
         if ctx.game is not None:
+            ctx.tracer.close_open()
             ctx.game.conn.close()
+        release_lease(ctx)
 
 
 if __name__ == "__main__":

@@ -65,9 +65,8 @@ class GameMaster:
                 narration = "\n".join([CAP_LINE] + [render(n, r) for n, _, r in out.tool_results])
             elif not narration:  # no words from the model: show the tool results plainly
                 narration = "\n".join(render(n, r) for n, _, r in out.tool_results)
-            gm_span = ctx.tracer._virtual.get(f"{ctx.tracer.trace_id}-gm")
-            if gm_span:
-                gm_span.status, gm_span.output = span.status, {"narration": narration, "capped": out.capped}
+            ctx.tracer.annotate_virtual(f"{ctx.tracer.trace_id}-gm", status=span.status,
+                                        output={"narration": narration, "capped": out.capped})
             end = REGISTRY.call(ctx, "close_turn", {}, "gm")
             span.output = {"narration": narration, "capped": out.capped}
         return TurnResult(narration, out.tool_results, end.get("status", "active"), end)

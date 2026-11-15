@@ -27,6 +27,8 @@ def test_reopen_recovers_once(tmp_path, monkeypatch, phase):
         call(ctx, "submit_draft", **ids, text="Hm.")
     before = state.read(ctx.game)["clock"]
     ctx.game.conn.close()
+    from harbor.tools.session_tools import release_lease
+    release_lease(ctx)  # simulate process exit as well as database close
     session = Session.open(run_id)
     ctx = session.ctx
     row = interaction.get(ctx.game, ids["interaction_id"])

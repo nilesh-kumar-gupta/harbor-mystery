@@ -54,7 +54,7 @@ def npc_context(ctx, interaction_id, attempt):
     return {"ok": True, **{k: card[k] for k in ("id", "name", "role", "persona", "speech_style")},
             "player_message": row["player_message"],
             "note": interaction.attempt_row(ctx.game, interaction_id, attempt)["note"],
-            "calls_left": max(0, 4 - ctx.counts.get((interaction_id, attempt), 0))}
+            "calls_left": max(0, 4 - ctx.counts.get((ctx.game.run_id, interaction_id, attempt), 0))}
 
 
 @REGISTRY.tool("submit_draft", "npc", "Submit your reply for evaluation.",
@@ -63,7 +63,7 @@ def submit_draft(ctx, interaction_id, attempt, text):
     result = interaction.submit_draft(ctx.game, interaction_id, attempt, text)
     if result["ok"]:
         span = virtual(ctx, interaction_id, attempt, "npc")
-        span.output = {"text": text, "capped": (interaction_id, attempt) in ctx.limited}
+        span.output = {"text": text, "capped": (ctx.game.run_id, interaction_id, attempt) in ctx.limited}
     return result
 
 
@@ -107,7 +107,7 @@ def finalize_talk(ctx, interaction_id):
     attempt = row["attempt"]
     first = game.conn.execute("SELECT COALESCE(MAX(seq),0) FROM events WHERE run_id=?", (game.run_id,)).fetchone()[0] + 1
     result = interaction.finalize(game, interaction_id, referee.code_check,
-                                  tool_limit=(interaction_id, attempt) in ctx.limited)
+                                  tool_limit=(ctx.game.run_id, interaction_id, attempt) in ctx.limited)
     if not result["ok"]:
         return result
     draft = interaction.attempt_row(game, interaction_id, attempt)

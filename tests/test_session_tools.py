@@ -1,4 +1,5 @@
 import shutil
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -68,7 +69,8 @@ def test_switch_has_no_old_guard(persistent):
     assert call(ctx, "new_game")["ok"]
     assert ctx.game is not old
     assert old.tool_depth == 0 and old.span_id is None
-    assert not old.conn.in_transaction
+    with pytest.raises(sqlite3.ProgrammingError):
+        old.conn.execute("SELECT 1")
     assert not tracer._stack and not tracer._pending
     old.conn.close()
 
@@ -80,10 +82,14 @@ def test_resume_does_not_reset_action_cap(persistent):
         assert call(ctx, "look")["ok"]
     old = ctx.game
     assert call(ctx, "resume_game", run_id=old.run_id)["ok"]
-    assert call(ctx, "player_turn", line="continue")["ok"]
-    assert call(ctx, "look")["error"] == "game master tool limit"
     assert not old.tracer._virtual
-    old.conn.close()
+    assert ctx.counts[(old.run_id, "gm", 1)] == 3
+    assert call(ctx, "player_turn", line="continue")["turn"] == 2
+    for _ in range(3):
+        assert call(ctx, "look")["ok"]
+    assert call(ctx, "look")["error"] == "game master tool limit"
+    assert call(ctx, "close_turn")["ok"]
+    assert not old.tracer._virtual
 
 
 @pytest.mark.parametrize("case_id", ["saltmere", "gaiety", "kestrel"])
@@ -114,6 +120,8 @@ def test_required_turn_refuses_actions_but_preserves_session_exemptions(persiste
 
 def test_session_open_requires_turn(persistent):
     from harbor.session import Session
+    from harbor.tools.session_tools import release_lease
+    release_lease(persistent)
     session = Session.open(persistent.game.run_id)
     assert session.ctx.require_turn
     assert not call(session.ctx, "look")["ok"]

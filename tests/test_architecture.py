@@ -110,7 +110,7 @@ def test_only_the_reducer_writes_run_tables():
     assert set(re.findall(write, (SRC / "tracing.py").read_text(encoding="utf-8"))) == {"spans"}
 
 
-def test_close_turn_is_the_only_model_tool_calling_engine_steps():
+def test_only_turn_and_session_boundaries_call_engine_steps():
     step_names = set(REGISTRY.names("engine"))
     wrappers = set()
     for audience in ("gm", "npc", "referee"):
@@ -119,10 +119,11 @@ def test_close_turn_is_the_only_model_tool_calling_engine_steps():
             tree = ast.parse(__import__("inspect").getsource(tool.func))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
-                    if isinstance(node.func, ast.Name) and node.func.id in step_names:
+                    if ((isinstance(node.func, ast.Name) and node.func.id in step_names)
+                            or (isinstance(node.func, ast.Attribute) and node.func.attr in step_names)):
                         wrappers.add(name)
                     if (isinstance(node.func, ast.Attribute) and node.func.attr == "call"
                             and len(node.args) > 1 and isinstance(node.args[1], ast.Constant)
                             and node.args[1].value in step_names):
                         wrappers.add(name)
-    assert wrappers == {"close_turn"}
+    assert wrappers == {"close_turn", "new_game", "resume_game"}
