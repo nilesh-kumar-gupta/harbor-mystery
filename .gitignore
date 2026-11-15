@@ -8,3 +8,5 @@ dist/
 runs/
 .env
 .DS_Store
+# per-run traces; the saved examples (M6) are added with `git add -f`
+traces/*.jsonl

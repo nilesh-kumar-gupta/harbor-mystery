@@ -23,6 +23,7 @@ class Game:
     rng: random.Random = field(default_factory=random.Random)
     tool_depth: int = 0          # > 0 while a tool call runs; events.record checks it
     span_id: str | None = None   # the enclosing tool_call span, stamped on each event
+    tracer: object = None        # the run's one tracer, kept here so every Context shares it
 
 
 def new_game(case: Case, run_id: str, seed: int = 0, db_path: str = ":memory:",

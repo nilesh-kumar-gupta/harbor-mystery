@@ -86,4 +86,6 @@ def test_only_the_reducer_writes_run_tables():
                if re.search(r"\b(INSERT|UPDATE|DELETE|REPLACE)\b", p.read_text(encoding="utf-8"))}
     assert writers <= allowed
     state_src = (SRC / "engine" / "state.py").read_text(encoding="utf-8")
-    assert re.findall(r"\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+(\w+)", state_src) == ["runs"]
+    write = r"\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+(\w+)"
+    assert re.findall(write, state_src) == ["runs"]
+    assert set(re.findall(write, (SRC / "tracing.py").read_text(encoding="utf-8"))) == {"spans"}

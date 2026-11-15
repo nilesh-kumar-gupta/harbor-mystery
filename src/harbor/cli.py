@@ -55,11 +55,13 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
     if db is None:
         Path("runs").mkdir(exist_ok=True)
         db = f"runs/{run_id}.sqlite"
-    if db != ":memory:" and Path(db).exists():
-        print(f"{db} already exists; choose another --db path", file=sys.stderr)
-        return 1
-    game = state.new_game(case, run_id, seed=seed, db_path=db, git_commit=_git_commit())
     jsonl = None if db == ":memory:" else Path(traces_dir) / f"{run_id}.jsonl"
+    for path in (Path(db) if db != ":memory:" else None, jsonl):
+        if path is not None and path.exists():
+            print(f"{path} already exists; try again or choose another --db path",
+                  file=sys.stderr)
+            return 1
+    game = state.new_game(case, run_id, seed=seed, db_path=db, git_commit=_git_commit())
     ctx = Context(game=game, tracer=Tracer(game.conn, run_id, jsonl))
     REGISTRY.call(ctx, "start_run", {}, "engine")
     out(f"{case.title}\n{case.premise}\n{HELP}")

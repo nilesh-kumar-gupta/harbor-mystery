@@ -11,6 +11,7 @@ a span opened while another is open becomes its child unless a parent is named.
 from __future__ import annotations
 
 import json
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ COLUMNS = ("run_id", "trace_id", "span_id", "parent_span_id", "kind", "name", "s
 class Span:
     """An open span. Set `output`, `status`, token counts or attrs before it closes."""
 
+    seq: int
     span_id: str
     parent_span_id: str | None
     trace_id: str
@@ -52,12 +54,19 @@ class Tracer:
         self._clock = clock
         self._stack: list[Span] = []
         self._pending: list[tuple[Span, float]] = []
-        self._count = 0
+        # continue numbering after spans already in this database for this run
+        self._count = conn.execute(
+            "SELECT COUNT(*) FROM spans WHERE run_id = ?", (run_id,)).fetchone()[0]
         if self.jsonl_path:
             self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
     def begin_trace(self, label: str) -> str:
-        """Start a new trace (the game uses one per turn). Returns its id."""
+        """Start a new trace (the game uses one per turn). Returns its id.
+
+        Only between root spans: a trace must not change under an open span.
+        """
+        if self._stack:
+            raise RuntimeError("begin_trace called while a span is open")
         self.trace_id = f"{self.run_id}-{label}"
         return self.trace_id
 
@@ -74,9 +83,9 @@ class Tracer:
             parent = self.current()
         self._count += 1
         span = Span(
-            span_id=f"s{self._count:05d}",
+            seq=self._count, span_id=f"{self.run_id}-s{self._count:06d}",
             parent_span_id=parent.span_id if parent else None,
-            trace_id=self.trace_id, kind=kind, name=name, start_ts=self._clock(),
+            trace_id=parent.trace_id if parent else self.trace_id, kind=kind, name=name, start_ts=self._clock(),
             input=input, attrs=dict(attrs or {}),
         )
         self._stack.append(span)
@@ -93,10 +102,17 @@ class Tracer:
                 self.flush()
 
     def flush(self) -> None:
-        """Write every closed span, in the order they were opened."""
+        """Write every closed span, in the order they were opened.
+
+        Never raises: tracing must not turn a finished tool call into an exception.
+        A span that cannot be written is reported on stderr and skipped.
+        """
         pending, self._pending = self._pending, []
-        for span, end_ts in sorted(pending, key=lambda item: item[0].span_id):
-            self._write(span, end_ts)
+        for span, end_ts in sorted(pending, key=lambda item: item[0].seq):
+            try:
+                self._write(span, end_ts)
+            except Exception as e:
+                print(f"harbor: could not write span {span.span_id}: {e}", file=sys.stderr)
 
     def _write(self, span: Span, end_ts: float) -> None:
         dump = lambda value: None if value is None else json.dumps(value, default=str)
@@ -108,11 +124,14 @@ class Tracer:
             "input": dump(span.input), "output": dump(span.output), "status": span.status,
             "attrs": json.dumps(span.attrs, default=str),
         }
+        line = None
+        if self.jsonl_path:  # serialise first, so a bad value fails before either write
+            line = json.dumps(dict(row, input=span.input, output=span.output, attrs=span.attrs),
+                              default=str) + "\n"
         self.conn.execute(
             f"INSERT INTO spans ({', '.join(COLUMNS)}) VALUES ({', '.join('?' * len(COLUMNS))})",
             [row[c] for c in COLUMNS],
         )
-        if self.jsonl_path:
-            line = dict(row, input=span.input, output=span.output, attrs=span.attrs)
+        if line is not None:
             with self.jsonl_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(line, default=str) + "\n")
+                f.write(line)

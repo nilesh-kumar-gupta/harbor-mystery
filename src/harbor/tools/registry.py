@@ -28,8 +28,10 @@ class Context:
     tracer: Tracer | None = None  # filled in below, so no call can run untraced
 
     def __post_init__(self) -> None:
+        # one tracer per run, so span ids never collide between contexts
         if self.tracer is None:
-            self.tracer = Tracer(self.game.conn, self.game.run_id)
+            self.tracer = self.game.tracer or Tracer(self.game.conn, self.game.run_id)
+        self.game.tracer = self.tracer
 
     def begin_turn(self) -> int:
         """Start the trace for the current turn. Returns the turn number."""
@@ -100,6 +102,7 @@ class Registry:
             game.conn.execute(f"SAVEPOINT {savepoint}")
             outer_span, game.span_id = game.span_id, span.span_id
             game.tool_depth += 1
+            result = None
             try:
                 result = self._run(ctx, name, arguments, audience)
             except Exception as e:  # errors are values: the model must be able to recover
@@ -107,9 +110,9 @@ class Registry:
             finally:
                 game.tool_depth -= 1
                 game.span_id = outer_span
-            if not result.get("ok"):
-                game.conn.execute(f"ROLLBACK TO {savepoint}")
-            game.conn.execute(f"RELEASE {savepoint}")
+                if result is None or not result.get("ok"):  # None: interrupted, re-raising
+                    game.conn.execute(f"ROLLBACK TO {savepoint}")
+                game.conn.execute(f"RELEASE {savepoint}")
             span.output = result
             span.status = "ok" if result.get("ok") else "error"
             return result

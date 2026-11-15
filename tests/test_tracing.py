@@ -11,7 +11,7 @@ from harbor.tracing import COLUMNS, Tracer
 
 
 def spans(conn):
-    return [dict(r) for r in conn.execute("SELECT * FROM spans ORDER BY span_id")]
+    return [dict(r) for r in conn.execute("SELECT * FROM spans ORDER BY rowid")]
 
 
 @pytest.fixture
@@ -136,3 +136,51 @@ def test_spans_inside_a_rolled_back_tool_call_survive(traced, monkeypatch):
     assert rows["inner"]["status"] == "rejected"
     assert rows["inner"]["parent_span_id"] == rows["look"]["span_id"]
     assert rows["look"]["status"] == "error"
+
+
+def test_two_contexts_on_one_game_share_a_tracer(traced):
+    other = Context(game=traced.game)
+    assert other.tracer is traced.tracer
+    assert REGISTRY.call(other, "look", {}, "gm")["ok"]
+    ids = [r["span_id"] for r in spans(traced.game.conn)]
+    assert len(ids) == len(set(ids))
+
+
+def test_a_new_tracer_on_an_existing_database_continues_numbering(traced):
+    fresh = Tracer(traced.game.conn, traced.game.run_id)
+    with fresh.span("agent", "later"):
+        pass
+    ids = [r["span_id"] for r in spans(traced.game.conn)]
+    assert len(ids) == len(set(ids)) and ids[-1].endswith("s000002")
+
+
+def test_a_trace_write_failure_never_reaches_the_tool_caller(case, tmp_path, capsys):
+    game = state.new_game(case, "bad-jsonl")
+    (tmp_path / "dir.jsonl").mkdir()
+    context = Context(game=game, tracer=Tracer(game.conn, "bad-jsonl", tmp_path / "dir.jsonl"))
+    assert REGISTRY.call(context, "start_run", {}, "engine")["ok"]
+    assert "could not write span" in capsys.readouterr().err
+
+
+def test_a_trace_cannot_change_under_an_open_span(traced):
+    with traced.tracer.span("agent", "game_master"):
+        with pytest.raises(RuntimeError):
+            traced.tracer.begin_trace("t0009")
+    with traced.tracer.span("agent", "a", parent=None) as a:
+        pass
+    traced.tracer.begin_trace("t0001")
+    with traced.tracer.span("llm_call", "child", parent=a):
+        pass
+    rows = {r["name"]: r for r in spans(traced.game.conn)}
+    assert rows["child"]["trace_id"] == rows["a"]["trace_id"]   # children stay in their parent's trace
+
+
+def test_an_interrupt_inside_a_tool_rolls_back_and_closes_the_savepoint(traced, monkeypatch):
+    before = events.state_hash(traced.game.conn, traced.game.run_id)
+    def interrupted(*a):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(state, "advance_clock", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        REGISTRY.call(traced, "go", {"place": "office"}, "gm")
+    assert not traced.game.conn.in_transaction
+    assert events.state_hash(traced.game.conn, traced.game.run_id) == before
