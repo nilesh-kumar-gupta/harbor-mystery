@@ -222,13 +222,17 @@ def test_a_twenty_turn_game_is_fully_traced(make_session):
             npc = [r for r in spans if r["kind"] == "agent" and r["name"].startswith("npc:")]
             ref = [r for r in spans if r["kind"] == "referee"]
             assert npc, turn
-            talk = [r for r in spans if r["name"] == "talk"][0]
-            assert all(by_id[r["parent_span_id"]] is talk for r in npc + ref)
+            gm = [r for r in spans if r["name"] == "game_master"][0]
+            assert all(by_id[r["parent_span_id"]] is gm for r in npc + ref)
+            begin = [r for r in spans if r["name"] == "begin_talk"]
+            finalize = [r for r in spans if r["name"] == "finalize_talk"]
+            assert len(begin) == 1 and len(finalize) == len(ref)
+            assert all(by_id[r["parent_span_id"]] is gm for r in begin + finalize)
             attempt = lambda r: json.loads(r["attrs"])["game.attempt"]
             drafts = [r for r in npc if "game.fallback" not in json.loads(r["attrs"])]
             # every draft with words is judged; an empty draft goes straight to the fallback
             assert sorted(map(attempt, drafts)) == sorted(map(attempt, ref)), turn
-            if ref:
+            if any(json.loads(r["output"] or "{}").get("text") for r in drafts):
                 assert any(by_id[r["parent_span_id"]]["kind"] == "referee"
                            for r in spans if r["kind"] == "llm_call")   # the model check
                 checked += 1

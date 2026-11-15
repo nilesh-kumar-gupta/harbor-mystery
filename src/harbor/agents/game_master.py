@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from harbor import prompts
 from harbor.agents.loop import LoopResult, run_loop
+from harbor.agents import conversation
 from harbor.commands import render
 from harbor.llm.base import LLMClient
 from harbor.tools import REGISTRY, Context
@@ -30,22 +31,25 @@ class TurnResult:
 
 
 class GameMaster:
-    def __init__(self, llm: LLMClient) -> None:
+    def __init__(self, llm: LLMClient, npc_llm=None, referee_llm=None) -> None:
         self.llm = llm
+        self.npc_llm, self.referee_llm = npc_llm, referee_llm
         self.system = prompts.load("game_master")
 
     def run_turn(self, ctx: Context, line: str) -> TurnResult:
-        turn = ctx.begin_turn()
+        started = REGISTRY.call(ctx, "player_turn", {"line": line}, "gm")
+        turn = started.get("turn", 0)
         attrs = {"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": "game_master",
                  "game.turn": turn}
-        with ctx.tracer.span("agent", "game_master", input=line, attrs=attrs) as span:
+        with ctx.tracer.span("agent", "offline_turn", input=line, attrs=attrs,
+                             parent_id=f"{ctx.tracer.trace_id}-gm") as span:
             summary = json.dumps(state_summary(ctx))
             try:
                 out = run_loop(
                     self.llm, ctx.tracer, "game_master", self.system,
                     [{"role": "user", "content": f"Player: {line}\n\nState: {summary}"}],
-                    REGISTRY.schemas("gm"),
-                    lambda name, args: REGISTRY.call(ctx, name, args, "gm"),
+                    self.schemas(),
+                    lambda name, args: self.execute(ctx, name, args),
                     MAX_TOOL_CALLS, attrs={"game.turn": turn},
                 )
             except Exception as e:  # e.g. the model client fails: the turn still ends
@@ -57,6 +61,20 @@ class GameMaster:
                 narration = "\n".join([CAP_LINE] + [render(n, r) for n, _, r in out.tool_results])
             elif not narration:  # no words from the model: show the tool results plainly
                 narration = "\n".join(render(n, r) for n, _, r in out.tool_results)
-            end = REGISTRY.call(ctx, "end_turn", {}, "engine")
+            gm_span = ctx.tracer._virtual.get(f"{ctx.tracer.trace_id}-gm")
+            if gm_span:
+                gm_span.status, gm_span.output = span.status, {"narration": narration, "capped": out.capped}
+            end = REGISTRY.call(ctx, "close_turn", {}, "gm")
             span.output = {"narration": narration, "capped": out.capped}
         return TurnResult(narration, out.tool_results, end.get("status", "active"), end)
+
+    def schemas(self):
+        names = ("look", "go", "notebook", "begin_talk", "hint", "accuse")
+        return [{"name": "talk" if n == "begin_talk" else n,
+                 "description": REGISTRY.get(n).description,
+                 "input_schema": REGISTRY.get(n).input_schema} for n in names]
+
+    def execute(self, ctx, name, args):
+        if name == "talk":
+            return conversation.run(ctx, self.npc_llm, self.referee_llm, **args)
+        return REGISTRY.call(ctx, name, args, "gm")

@@ -203,10 +203,10 @@ def test_plain_play_loop_is_traced_per_turn(case, tmp_path):
     rows = connect(str(db)).execute("SELECT trace_id, name FROM spans ORDER BY rowid").fetchall()
     turns = [(r["trace_id"].rsplit("-", 1)[1], r["name"]) for r in rows]
     assert turns == [("setup", "start_run"),
-                     ("t0001", "game_master"), ("t0001", "chat"), ("t0001", "look"),
-                     ("t0001", "chat"), ("t0001", "end_turn"),
-                     ("t0002", "game_master"), ("t0002", "chat"), ("t0002", "go"),
-                     ("t0002", "chat"), ("t0002", "end_turn")]
+                     ("t0001", "player_turn"), ("t0001", "game_master"), ("t0001", "offline_turn"), ("t0001", "chat"), ("t0001", "look"),
+                     ("t0001", "chat"), ("t0001", "close_turn"),
+                     ("t0002", "player_turn"), ("t0002", "game_master"), ("t0002", "offline_turn"), ("t0002", "chat"), ("t0002", "go"),
+                     ("t0002", "chat"), ("t0002", "close_turn")]
 
 
 def test_commands_piped_from_a_file_are_echoed(monkeypatch, capsys):

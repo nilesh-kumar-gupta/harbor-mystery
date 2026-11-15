@@ -10,7 +10,6 @@ from pathlib import Path
 
 from harbor import prompts
 from harbor.agents.game_master import GameMaster, TurnResult
-from harbor.agents.npc import make_npc_runner
 from harbor.engine import state
 from harbor.engine.case_loader import Case
 from harbor.tools import REGISTRY, Context
@@ -29,11 +28,9 @@ class Session:
         game = state.new_game(case, run_id, seed=seed, db_path=db_path,
                               git_commit=git_commit, prompt_hash=prompts.prompt_hash(),
                               model=getattr(llms["gm"], "model", None))
-        ctx = Context(game=game, tracer=Tracer(game.conn, run_id, jsonl_path),
-                      npc_runner=make_npc_runner(llms["npc"]),
-                      referee_llm=llms.get("referee"))
+        ctx = Context(game=game, tracer=Tracer(game.conn, run_id, jsonl_path))
         REGISTRY.call(ctx, "start_run", {}, "engine")
-        return cls(ctx=ctx, gm=GameMaster(llms["gm"]))
+        return cls(ctx=ctx, gm=GameMaster(llms["gm"], llms["npc"], llms.get("referee")))
 
     def turn(self, line: str) -> TurnResult:
         return self.gm.run_turn(self.ctx, line)

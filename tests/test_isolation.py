@@ -1,3 +1,4 @@
+from conftest import talk_call, npc_call
 """Knowledge isolation: no character can put a clue they do not know into the
 notebook, whatever the model asks for. (The referee half arrives in M4.)"""
 
@@ -5,7 +6,7 @@ import pytest
 
 from harbor.engine import events
 from harbor.engine.case_loader import load_case
-from harbor.tools import REGISTRY, Draft
+from harbor.tools import REGISTRY
 
 from conftest import CASE_PATH
 
@@ -23,15 +24,18 @@ def make_active(ctx, character_id, runner=None):
     start = next(c.start_place for c in CASE.characters if c.id == character_id)
     for place in ROUTE[start]:
         assert REGISTRY.call(ctx, "go", {"place": place}, "gm")["ok"]
-    ctx.npc_runner = runner or (lambda *a: Draft("Hm."))
-    return REGISTRY.call(ctx, "talk", {"character": character_id, "message": "hello"}, "gm")
+    if runner is None:
+        from conftest import open_npc
+        return open_npc(ctx, character_id)
+    ctx.test_npc_llm = runner
+    return talk_call(ctx, {"character": character_id, "message": "hello"}, "gm")
 
 
 @pytest.mark.parametrize("character_id, clue_id", UNKNOWN)
 def test_reveal_clue_refuses_a_clue_the_character_does_not_know(ctx, character_id, clue_id):
     assert make_active(ctx, character_id)["ok"]
     before = events.state_hash(ctx.game.conn, ctx.game.run_id)
-    out = REGISTRY.call(ctx, "reveal_clue", {"clue_id": clue_id}, "npc")
+    out = npc_call(ctx, "reveal_clue", clue_id=clue_id)
     assert out == {"ok": False, "error": f"you do not know clue {clue_id}"}
     assert events.state_hash(ctx.game.conn, ctx.game.run_id) == before
 
@@ -39,7 +43,7 @@ def test_reveal_clue_refuses_a_clue_the_character_does_not_know(ctx, character_i
 @pytest.mark.parametrize("character_id", [c.id for c in CASE.characters])
 def test_recall_knowledge_returns_only_the_active_characters_rows(ctx, character_id):
     assert make_active(ctx, character_id)["ok"]
-    out = REGISTRY.call(ctx, "recall_knowledge", {}, "npc")
+    out = npc_call(ctx, "recall_knowledge")
     assert {c["id"] for c in out["clues"]} <= {cl for ch, cl in KNOWS if ch == character_id}
     own_pointers = {p.clue_id for p in CASE.pointers if p.character_id == character_id}
     assert {p["clue"] for p in out["pointers"]} <= own_pointers
@@ -48,7 +52,7 @@ def test_recall_knowledge_returns_only_the_active_characters_rows(ctx, character
 @pytest.mark.parametrize("clue_id", ["C99", "", "c3", "C3; DROP TABLE clues"])
 def test_unknown_clue_ids_are_refused(ctx, clue_id):
     assert make_active(ctx, "mira")["ok"]
-    assert REGISTRY.call(ctx, "reveal_clue", {"clue_id": clue_id}, "npc") == {
+    assert npc_call(ctx, "reveal_clue", clue_id=clue_id) == {
         "ok": False, "error": f"unknown clue {clue_id!r}"}
 
 
@@ -57,7 +61,6 @@ def test_unknown_clue_ids_are_refused(ctx, clue_id):
 import json  # noqa: E402
 
 from harbor import referee  # noqa: E402
-from harbor.agents.npc import make_npc_runner  # noqa: E402
 from harbor.engine import state  # noqa: E402
 from harbor.llm.scripted import ScriptedLLM  # noqa: E402
 
@@ -75,7 +78,7 @@ def test_the_referee_rejects_every_leak_and_falls_back(ctx, character_id, clue_i
     (first draft and 2 regenerations); talk returns the fallback line."""
     text = next(c.text for c in CASE.clues if c.id == clue_id)
     llm = ScriptedLLM([f"Between us: {text}"] * 3)
-    route_and_talk = make_active(ctx, character_id, runner=make_npc_runner(llm))
+    route_and_talk = make_active(ctx, character_id, runner=(llm))
     out = route_and_talk
     assert out["ok"] and out["reply"] == CHARS[character_id].fallback_line
     assert out["fallback"] is True and out["new_clues"] == []
@@ -105,25 +108,25 @@ def test_pointer_lines_never_trip_the_code_check(ctx, pointer):
 def test_a_revealed_clue_may_be_stated(ctx):
     llm = ScriptedLLM([{"tool_calls": [("reveal_clue", {"clue_id": "C3"})]},
                        "Someone with a limp and a lantern, near two."])
-    out = make_active(ctx, "mira", runner=make_npc_runner(llm))
+    out = make_active(ctx, "mira", runner=(llm))
     assert out["new_clues"] == ["C3"] and "lantern" in out["reply"]
     assert [v["status"] for v in spans_of(ctx, "referee")] == ["ok"]
 
 
 def test_a_clue_the_player_names_may_be_echoed(ctx):
     REGISTRY.call(ctx, "look", {}, "gm")                        # C1 in the notebook
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Cut clean, you say? Not by my tools."]))
+    ctx.test_npc_llm = (ScriptedLLM(["Cut clean, you say? Not by my tools."]))
     REGISTRY.call(ctx, "go", {"place": "chandlery"}, "gm")
-    out = REGISTRY.call(ctx, "talk", {"character": "ysolde",
+    out = talk_call(ctx, {"character": "ysolde",
                                       "message": "The cable was cut clean."}, "gm")
     assert out["reply"].startswith("Cut clean") and not out.get("fallback")
 
 
 def test_a_regenerated_reply_that_is_clean_is_accepted(ctx):
     llm = ScriptedLLM(["Brask bought bolt cutters from Ysolde.", "Ask Mira. She's up all hours."])
-    ctx.npc_runner = make_npc_runner(llm)
+    ctx.test_npc_llm = (llm)
     REGISTRY.call(ctx, "go", {"place": "office"}, "gm")
-    out = REGISTRY.call(ctx, "talk", {"character": "odrin", "message": "Who did it?"}, "gm")
+    out = talk_call(ctx, {"character": "odrin", "message": "Who did it?"}, "gm")
     assert out["reply"] == "Ask Mira. She's up all hours." and not out.get("fallback")
     assert [v["status"] for v in spans_of(ctx, "referee")] == ["rejected", "ok"]
     assert [r["text"] for r in state.conversation(ctx.game, "odrin")] == [
@@ -131,11 +134,11 @@ def test_a_regenerated_reply_that_is_clean_is_accepted(ctx):
 
 
 def test_the_model_check_runs_only_after_the_code_check_passes(ctx):
-    checker = ScriptedLLM(["LEAK: invents a boat", "OK"])
-    ctx.referee_llm = checker
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(
+    checker = ScriptedLLM(["LEAK", "OK"])
+    ctx.test_referee_llm = checker
+    ctx.test_npc_llm = (ScriptedLLM(
         ["Bolt cutters, I heard.", "A red boat came by.", "Quiet night."]))
-    out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Anything?"}, "gm")
+    out = talk_call(ctx, {"character": "mira", "message": "Anything?"}, "gm")
     assert out["reply"] == "Quiet night."
     # draft 1 failed the code check (no model call); draft 2 failed the model; draft 3 passed
     assert len(checker.calls) == 2
@@ -151,9 +154,9 @@ def test_the_model_check_runs_only_after_the_code_check_passes(ctx):
 def test_a_failing_check_model_rejects_the_draft(ctx):
     """The model check fails closed: an error counts as a leak, so the draft is
     regenerated, and after 2 regenerations the fallback line is used."""
-    ctx.referee_llm = ScriptedLLM([])                            # raises ScriptExhausted
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Morning."] * 3))
-    out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
+    ctx.test_referee_llm = ScriptedLLM([])                            # raises ScriptExhausted
+    ctx.test_npc_llm = (ScriptedLLM(["Morning."] * 3))
+    out = talk_call(ctx, {"character": "mira", "message": "Hello"}, "gm")
     assert out["reply"] == CHARS["mira"].fallback_line and out["fallback"] is True
     assert [s["status"] for s in spans_of(ctx, "llm_call") if s["name"] == "chat"
             and json.loads(s["attrs"]).get("gen_ai.agent.name") == "referee"] == ["error"] * 3
@@ -172,9 +175,9 @@ def test_a_check_model_that_recovers_lets_the_regenerated_draft_through(ctx):
         if isinstance(answer, Exception):
             raise answer
         return answer
-    ctx.referee_llm = ScriptedLLM(flaky)
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Morning.", "Good morning."]))
-    out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
+    ctx.test_referee_llm = ScriptedLLM(flaky)
+    ctx.test_npc_llm = (ScriptedLLM(["Morning.", "Good morning."]))
+    out = talk_call(ctx, {"character": "mira", "message": "Hello"}, "gm")
     assert out["reply"] == "Good morning." and not out.get("fallback")
     assert [r["status"] for r in spans_of(ctx, "referee")] == ["error", "ok"]
     assert referee.CHECK_FAILED_NOTE in json.dumps(
@@ -223,7 +226,7 @@ def test_a_rejected_draft_writes_nothing(ctx):
     for _ in range(3):
         drafts += [{"tool_calls": [("reveal_clue", {"clue_id": "C3"})]},
                    "A limp and a lantern, near two. And Tom bought bolt cutters."]
-    out = make_active(ctx, "mira", runner=make_npc_runner(ScriptedLLM(drafts)))
+    out = make_active(ctx, "mira", runner=(ScriptedLLM(drafts)))
     assert out["fallback"] is True and out["new_clues"] == []
     assert "C3" not in state.found_clue_ids(ctx.game)
     assert len(spans_of(ctx, "referee")) == 3     # the spans are kept
@@ -234,16 +237,16 @@ def test_a_regenerated_draft_keeps_only_its_own_writes(ctx):
               "The tavern was loud till 3 a.m. and Tom bought bolt cutters.",
               {"tool_calls": [("reveal_clue", {"clue_id": "C3"})]},
               "A limp and a lantern, near two."]
-    out = make_active(ctx, "mira", runner=make_npc_runner(ScriptedLLM(drafts)))
+    out = make_active(ctx, "mira", runner=(ScriptedLLM(drafts)))
     assert out["new_clues"] == ["C3"] and "C8" not in state.found_clue_ids(ctx.game)
 
 
 def test_a_paraphrase_the_keywords_miss_is_caught_by_the_model_check(ctx):
     checker = ScriptedLLM(lambda system, messages, tools:
                           "LEAK" if "no lights" in messages[0]["content"] else "OK")
-    ctx.referee_llm = checker
+    ctx.test_referee_llm = checker
     llm = ScriptedLLM(["A boat went out with no lights, I'd say.", "Quiet night, love."])
-    out = make_active(ctx, "mira", runner=make_npc_runner(llm))
+    out = make_active(ctx, "mira", runner=(llm))
     assert out["reply"] == "Quiet night, love."
     assert [v["status"] for v in spans_of(ctx, "referee")] == ["rejected", "ok"]
 
@@ -252,19 +255,28 @@ def test_the_model_check_is_told_what_the_player_stated(ctx):
     REGISTRY.call(ctx, "look", {}, "gm")
     REGISTRY.call(ctx, "go", {"place": "chandlery"}, "gm")
     checker = ScriptedLLM(["OK"])
-    ctx.referee_llm = checker
-    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Cut clean, you say."]))
-    REGISTRY.call(ctx, "talk", {"character": "ysolde", "message": "The cable was cut clean."},
+    ctx.test_referee_llm = checker
+    ctx.test_npc_llm = (ScriptedLLM(["Cut clean, you say."]))
+    talk_call(ctx, {"character": "ysolde", "message": "The cable was cut clean."},
                   "gm")
     sent = json.loads(checker.calls[0]["messages"][0]["content"])
     assert sent["facts_the_player_stated"] == [
         "The winch cable was cut clean, and the pins were knocked loose."]
 
 
-def test_the_referee_cannot_write(ctx, monkeypatch):
-    def writing_check(*a, **k):
-        state.advance_clock(ctx.game, 60)
-    monkeypatch.setattr(referee, "check", writing_check)
-    out = make_active(ctx, "mira", runner=lambda *a: Draft("Hello."))
-    assert out["ok"] is False and "WriteOutsideTool" in out["error"]
-    assert state.read(ctx.game)["clock"] == 360
+def test_the_referee_cannot_write(ctx):
+    from harbor.engine.events import WriteOutsideTool
+    attempts = []
+    def writing_model(*args):
+        with pytest.raises(WriteOutsideTool):
+            state.advance_clock(ctx.game, 60)
+        attempts.append(True)
+        raise WriteOutsideTool("referee write refused")
+    ctx.test_referee_llm = ScriptedLLM(writing_model)
+    out = make_active(ctx, "mira", runner=ScriptedLLM(["Hello."] * 3))
+    assert out["ok"] and out["fallback"]
+    assert len(attempts) == 3
+    assert state.read(ctx.game)["clock"] == 370
+    assert state.found_clue_ids(ctx.game) == set()
+    assert [r["text"] for r in state.conversation(ctx.game, "mira")] == ["hello", CHARS["mira"].fallback_line]
+    assert all(r["status"] == "error" for r in spans_of(ctx, "referee"))

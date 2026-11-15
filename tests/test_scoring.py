@@ -1,9 +1,10 @@
+from conftest import talk_call, npc_call
 """accuse and scoring: STRUCTURE example 7's table, the ending, and game over."""
 
 import pytest
 
 from harbor.engine import events, state
-from harbor.tools import REGISTRY, Draft
+from harbor.tools import REGISTRY
 
 
 def grant(ctx, *clue_ids):
@@ -17,14 +18,13 @@ def grant(ctx, *clue_ids):
         for p in route:
             REGISTRY.call(ctx, "go", {"place": p}, "gm")
 
-        def runner(c, card, message, note, clue_id=clue_id):
-            REGISTRY.call(c, "reveal_clue", {"clue_id": clue_id}, "npc")
-            return Draft("Hm.")
-        ctx.npc_runner = runner
+        from harbor.llm.scripted import ScriptedLLM
+        ctx.test_npc_llm = ScriptedLLM([
+            {"tool_calls": [("reveal_clue", {"clue_id": clue_id})]}, "Hm."])
         message = {"C2": "the town meeting?", "C3": "last night on the quay?",
                    "C4": "boats at night?", "C6": "Tom at midnight?", "C7": "fees?",
                    "C8": "the tavern?"}[clue_id]
-        assert clue_id in REGISTRY.call(ctx, "talk", {"character": who, "message": message},
+        assert clue_id in talk_call(ctx, {"character": who, "message": message},
                                         "gm")["new_clues"]
         for p in reversed(["quay"] + route[:-1]) if route else ():   # walk back to the quay
             REGISTRY.call(ctx, "go", {"place": p}, "gm")
@@ -87,7 +87,7 @@ def test_after_the_ending_every_tool_says_game_over(ctx):
     grant(ctx, "C3", "C4")
     accuse(ctx, "tom", ["C3", "C4"])
     for name, args in (("look", {}), ("notebook", {}), ("hint", {}), ("go", {"place": "office"}),
-                       ("talk", {"character": "mira", "message": "hi"}), ("go", {}),
+                       ("begin_talk", {"character": "mira", "message": "hi"}), ("go", {}),
                        ("accuse", {"character": "tom", "motive": "x", "clue_ids": []})):
         assert REGISTRY.call(ctx, name, args, "gm") == {"ok": False, "error": "game over"}
 

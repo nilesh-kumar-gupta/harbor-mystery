@@ -1,3 +1,4 @@
+from conftest import talk_call, npc_call, inspected_talk
 """Hints: the stuck nudge after 8 turns, pointer hints, and the `hint` tool."""
 
 import pytest
@@ -82,11 +83,11 @@ def test_a_guarded_clue_is_nudged_as_a_pointer_not_handed_over(make_session):
     result = session.turn("talk ysolde: nice shop")
     assert "C5" not in result.tool_results[0][2]["new_clues"]          # trust 0: still guarded
     ctx = session.ctx
-    recall = REGISTRY.call(ctx, "recall_knowledge", {}, "npc")
+    recall = inspected_talk(ctx, state.read(ctx.game)["active_character"], "nice shop")
     assert recall["guarded"] is True and recall["clues"] == []
     session.turn("go lighthouse")
     session.turn("talk bram: hello again")
-    recall = REGISTRY.call(ctx, "recall_knowledge", {}, "npc")
+    recall = inspected_talk(ctx, state.read(ctx.game)["active_character"], "nice shop")
     assert {"clue": "C5", "ask": "Ysolde Crane", "nudge": True} == {
         k: v for k, v in recall["pointers"][0].items() if k in ("clue", "ask", "nudge")}
 
@@ -97,7 +98,7 @@ def test_someone_with_no_pointer_row_still_sends_the_player_on(make_session):
     stall(session, 8)                                   # C2 armed
     session.turn("go fish market")
     session.turn("talk tom: lovely fish")               # Tom knows nothing about C2
-    recall = REGISTRY.call(session.ctx, "recall_knowledge", {}, "npc")
+    recall = inspected_talk(session.ctx, "tom", "lovely fish")
     nudge = [p for p in recall["pointers"] if p.get("nudge")]
     assert nudge and (NAMES[nudge[0]["ask"]], "C2") in KNOWS
 
@@ -109,9 +110,8 @@ def test_pointer_hints_name_a_character_who_really_knows_the_clue(make_session, 
     session.turn("look")
     stall(session, 8)                                   # also arms a nudge pointer
     from test_isolation import make_active
-    from harbor.tools import Draft
-    make_active(ctx, character, runner=lambda *a: Draft("Hm."))
-    recall = REGISTRY.call(ctx, "recall_knowledge", {}, "npc")
+    make_active(ctx, character)
+    recall = npc_call(ctx, "recall_knowledge")
     for pointer in recall["pointers"]:
         assert (NAMES[pointer["ask"]], pointer["clue"]) in KNOWS, pointer
 
@@ -130,10 +130,10 @@ def test_hint_names_a_person_and_place_never_the_clue(ctx):
 
 
 def test_hint_prefers_people_not_yet_spoken_to(ctx):
-    from harbor.tools import Draft
     REGISTRY.call(ctx, "go", {"place": "office"}, "gm")
-    ctx.npc_runner = lambda *a: Draft("Busy.")
-    REGISTRY.call(ctx, "talk", {"character": "odrin", "message": "weather?"}, "gm")
+    from harbor.llm.scripted import ScriptedLLM
+    ctx.test_npc_llm = ScriptedLLM(["Busy."])
+    talk_call(ctx, {"character": "odrin", "message": "weather?"}, "gm")
     assert REGISTRY.call(ctx, "hint", {}, "gm")["target"]["character"] == "Hale Pruitt"
 
 
