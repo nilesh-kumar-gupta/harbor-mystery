@@ -95,7 +95,7 @@ Characters who do not know a clue but know who does say so ("Ask Bram. The light
 
 ### Tracing, the event log and replay
 
-Every model call, tool call, referee check and agent run goes through one `tracing.span()` helper. Spans are written to the run's `spans` table and mirrored to `traces/<run_id>.jsonl`, with one trace per turn and parent links between spans. They use OpenTelemetry GenAI attribute names where they exist (`gen_ai.tool.name`, `gen_ai.agent.name`, ...) plus game attributes (`game.turn`, `game.npc`). A rejected draft keeps its raw text in a span with status `rejected`, so leaks can be counted later.
+Every model call, tool call, referee check and agent run goes through one `tracing.span()` helper. Spans are written to the run's `spans` table and mirrored to `traces/<run_id>.jsonl`, with one trace per turn and parent links between spans. They use OpenTelemetry GenAI attribute names where they exist (`gen_ai.tool.name`, `gen_ai.agent.name`, ...) plus game attributes (`game.turn`, `game.npc`). A rejected draft keeps its raw text in a span with status `rejected`, so leaks can be counted later from the referee spans: `rejected` is a leak, `error` means the check model failed.
 
 Each run is one SQLite file (`runs/<run_id>.sqlite`) holding read-only case tables, run tables and trace tables. The `events` table is an append-only log and the source of truth: every state change is one event, written only while a tool call is open. Replaying the events onto a fresh case load gives the same state hash, and two runs with the same seed and scripted models give the same final state; both are tested.
 

@@ -21,7 +21,7 @@ from pathlib import Path
 from harbor.bot import Bot
 from harbor.engine.case_loader import load_case
 from harbor.llm.scripted import ScriptedLLM
-from harbor.offline import POLITE, _first_user, _tool_results, npc_policy, offline_llms
+from harbor.offline import _first_user, _tool_results, npc_policy, offline_llms
 from harbor.session import Session
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +32,7 @@ OUT = ROOT / "traces"
 LEAK = "Brask, I'd wager. Ysolde sold bolt cutters to Tom two days ago."
 # A stray fact no clue keyword catches; only the referee's model check can.
 STRAY = "The harbormaster's own boat was out past three, I'd swear to it."
+POLITE = ("please", "thank", "kindly", "sorry", "appreciate")
 
 
 def leaky_npc(always: bool):

@@ -7,7 +7,7 @@ Each file is the JSONL mirror of one game's `spans` table: one span per line, li
 | `example-demo-game.jsonl` | The README's demo game: a bad exit, a guarded clue won by a polite repeat, a `hint`, and a winning accusation. |
 | `example-bot-win.jsonl` | The scripted bot solving the case in 23 turns. |
 | `example-bad-exit.jsonl` | `go lighthouse` from the Quay: the `go` span has status `error`, returns the real exits, and changes nothing. |
-| `example-refused-reveal-low-trust.jsonl` | Turn 2: Ysolde's NPC model calls `reveal_clue(C5)` at trust 0 and the engine refuses it ("trust too low"); her reply is the fallback line. Turn 3: a polite repeat raises trust and C5 is revealed. |
+| `example-refused-reveal-low-trust.jsonl` | Turn 2: Ysolde's NPC model calls `reveal_clue(C5)` at trust 0 and the engine refuses it ("trust too low"), then refuses `update_trust` because this is the first ask; her reply is the fallback line. Turn 3: the repeated ask raises trust and C5 is revealed. |
 | `example-referee-leak.jsonl` | Odrin's first draft states C5, which only Ysolde knows. The referee's code check rejects it (`leaked: ["C5"]`), the draft is regenerated with the referee's note, and the second draft passes. |
 | `example-fallback-line.jsonl` | The same leak on all three drafts: three `rejected` agent and referee spans, then Odrin's fixed fallback line (`fallback: true` on `talk`). |
 | `example-referee-model-check.jsonl` | Mira's draft adds a stray fact no clue keyword catches. The code check passes, the referee's model check answers `LEAK`, and the regenerated draft passes. |

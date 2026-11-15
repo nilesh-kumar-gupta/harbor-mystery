@@ -216,6 +216,10 @@ def _validate(case: Case) -> list[str]:
             need(c.found_at_place, places, f"clue {c.id} found_at_place")
         if c.implicates is None:
             problems.append(f"clue {c.id}: implicates must be a list of character ids")
+        elif not all(isinstance(who, str) for who in c.implicates):
+            problems.append(f"clue {c.id}: implicates must be a list of character ids")
+        elif len(set(c.implicates)) != len(c.implicates):
+            problems.append(f"clue {c.id}: implicates has a duplicate")
         else:
             for who in c.implicates:
                 need(who, chars, f"clue {c.id} implicates")

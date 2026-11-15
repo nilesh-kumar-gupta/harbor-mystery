@@ -5,7 +5,8 @@ model would see (its messages and tool results) and picks tool calls.
 
 - `gm_policy`: a game master that understands the typed commands in
   `commands.py` and narrates by rendering tool results.
-- `npc_policy`: an NPC that recalls, raises trust when the engine says it may,
+- `npc_policy`: an NPC that recalls, asks the engine to raise trust when it
+  holds something back (the engine allows a repeated ask or a shown clue),
   reveals what is unlocked and repeats the engine's pointer lines.
 - `referee_policy`: a stray-fact checker that always answers OK (the code check
   still runs in full).
@@ -17,9 +18,6 @@ import json
 
 from harbor.commands import parse_command, render
 from harbor.llm.scripted import ScriptedLLM
-
-POLITE = ("please", "thank", "kindly", "sorry", "appreciate")
-
 
 def _tool_results(messages: list[dict]) -> list[tuple[str, dict]]:
     return [(m["name"], json.loads(m["content"])) for m in messages if m["role"] == "tool"]
@@ -41,7 +39,6 @@ def gm_policy(system: str, messages: list[dict], tools: list[dict]) -> dict:
 
 
 def npc_policy(system: str, messages: list[dict], tools: list[dict]) -> dict:
-    said = _first_user(messages).lower()
     results = _tool_results(messages)
     used = len(results)
     recalls = [r for name, r in results if name == "recall_knowledge" and r.get("ok")]
@@ -54,8 +51,7 @@ def npc_policy(system: str, messages: list[dict], tools: list[dict]) -> dict:
     if not trusted and latest.get("guarded") and used <= 2:
         if latest.get("shown"):
             return {"tool_calls": [("update_trust", {"reason": "related_clue_shown"})]}
-        if any(word in said for word in POLITE):
-            return {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}
+        return {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}
     if trusted and trusted[-1].get("ok") and results[-1][0] == "update_trust":
         return {"tool_calls": [("recall_knowledge", {})]}
     for clue in latest["clues"]:

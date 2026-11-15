@@ -60,7 +60,7 @@ def present(game: Game, place_id: str) -> list[sqlite3.Row]:
 
 def visible_clues(game: Game, place_id: str) -> list[sqlite3.Row]:
     return game.conn.execute(
-        "SELECT * FROM clues WHERE found_at_place = ? ORDER BY rowid", (place_id,)).fetchall()
+        f"SELECT {CLUE_COLUMNS} FROM clues WHERE found_at_place = ? ORDER BY rowid", (place_id,)).fetchall()
 
 
 def matches(text: str, terms) -> list[str]:
@@ -87,12 +87,17 @@ MAX_TRUST = 2
 TRUST_REASONS = ("polite_repeat", "related_clue_shown", "rude")
 
 
+# explicit columns: the solver-only column naming the culprit never leaves the database
+CLUE_COLUMNS = "id, text, kind, found_at_place, keywords"
+
+
 def _list(text: str) -> list[str]:
     return json.loads(text)
 
 
 def clue(game: Game, clue_id: str) -> sqlite3.Row | None:
-    return game.conn.execute("SELECT * FROM clues WHERE id = ?", (clue_id,)).fetchone()
+    return game.conn.execute(f"SELECT {CLUE_COLUMNS} FROM clues WHERE id = ?",
+                             (clue_id,)).fetchone()
 
 
 def knowledge(game: Game, character_id: str) -> list[sqlite3.Row]:

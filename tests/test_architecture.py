@@ -74,6 +74,16 @@ def test_implicates_is_read_only_by_the_loader_and_solver():
     assert readers <= {"engine/schema.py", "engine/case_loader.py", "solver.py"}
 
 
+def test_implicates_never_reaches_a_span(make_session):
+    """A whole bot game: no tool result, model input or output carries `implicates`."""
+    from harbor.bot import Bot
+    session = make_session()
+    Bot(session).play()
+    rows = session.ctx.game.conn.execute("SELECT input, output, attrs FROM spans").fetchall()
+    assert rows and not any("implicates" in (r[0] or "") + (r[1] or "") + (r[2] or "")
+                            for r in rows)
+
+
 def test_npc_tools_cannot_name_a_character():
     for schema in REGISTRY.schemas("npc"):
         for prop in schema["input_schema"]["properties"]:

@@ -177,6 +177,8 @@ def test_a_check_model_that_recovers_lets_the_regenerated_draft_through(ctx):
     out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
     assert out["reply"] == "Good morning." and not out.get("fallback")
     assert [r["status"] for r in spans_of(ctx, "referee")] == ["error", "ok"]
+    assert referee.CHECK_FAILED_NOTE in json.dumps(
+        [s["input"] for s in spans_of(ctx, "llm_call")])
 
 
 # ---- M4 review: paraphrases, side effects and false rejections ----------------

@@ -149,7 +149,7 @@ def _npc_reply(ctx: Context, who, message: str) -> tuple[str, bool]:
         if draft is None:          # the agent failed, hit its cap or said nothing
             return who["fallback_line"], True
         ctx.tracer.amend(span, status="rejected")
-        note = referee.LEAK_NOTE
+        note = referee.CHECK_FAILED_NOTE if verdict.error else referee.LEAK_NOTE
     return who["fallback_line"], True
 
 

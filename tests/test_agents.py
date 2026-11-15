@@ -375,3 +375,14 @@ def test_prompt_files_are_stubs_naming_their_tools():
         text = prompts.load(name)
         assert text.startswith("<!-- STUB: owner to rewrite -->")
         assert all(t in text for t in tools)
+
+
+def test_a_plain_second_ask_raises_trust_in_offline_play(make_session):
+    """ADR 002 #18 as amended, through the offline stand-ins: no courtesy word needed."""
+    session = make_session()
+    session.turn("go chandlery")
+    first = session.turn("talk ysolde: Who bought bolt cutters?").tool_results[0][2]
+    assert first["new_clues"] == []
+    second = session.turn("talk ysolde: Who bought bolt cutters?").tool_results[0][2]
+    assert second["new_clues"] == ["C5"]
+    assert state.trust_of(session.ctx.game, "ysolde") == 1

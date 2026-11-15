@@ -25,6 +25,7 @@ from harbor.engine import rules, state
 from harbor.engine.state import Game
 
 LEAK_NOTE = "your last reply used facts you do not know. Use only what your tools returned."
+CHECK_FAILED_NOTE = "your last reply could not be checked. Reply again, using only what your tools returned."
 
 
 @dataclass

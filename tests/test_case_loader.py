@@ -61,6 +61,8 @@ def test_brief_knowledge_assignments():
         (lambda d: d["clues"][1].update(implicates=["nobody"]), "C2 implicates: unknown id 'nobody'"),
         (lambda d: d["clues"][1].pop("implicates"), "C2: implicates must be a list"),
         (lambda d: d["clues"][1].update(implicates="tom"), "C2: implicates must be a list"),
+        (lambda d: d["clues"][1].update(implicates=[["tom"]]), "C2: implicates must be a list"),
+        (lambda d: d["clues"][1].update(implicates=["tom", "tom"]), "C2: implicates has a duplicate"),
     ],
 )
 def test_invalid_cases_are_rejected(raw, mutate, expected):
