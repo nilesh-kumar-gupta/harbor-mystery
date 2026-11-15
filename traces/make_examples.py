@@ -9,8 +9,7 @@ the "bad" examples swap in a ScriptedLLM that does: an NPC that states a fact it
 does not know, a referee model that answers LEAK, an NPC that tries to reveal a
 guarded clue. The engine and referee code that handles them is the real code.
 
-The demo game's trace (example-demo-game.jsonl) is not made here: it is the
-trace `harbor play` wrote for the README transcript (see traces/README.md).
+The demo trace is regenerated from docs/demo-commands.txt through Session.
 """
 
 from __future__ import annotations
@@ -58,7 +57,7 @@ def stray_npc(system, messages, tools):
 
 def strict_referee():
     """Answers LEAK to the first check, OK after that."""
-    answers = iter(["LEAK: the harbormaster's boat is not in the facts given."])
+    answers = iter(["LEAK"])
     return ScriptedLLM(lambda *a: next(answers, "OK"), model="strict-referee")
 
 
@@ -109,6 +108,10 @@ def run(name: str, llms: dict, lines: list[str]) -> Path:
 
 
 def main() -> int:
+    demo = [line.strip() for line in (ROOT / "docs/demo-commands.txt").read_text().splitlines()
+            if line.strip() and line.strip() not in ("quit", "help")]
+    print("\n=== example-demo-game")
+    run("demo-game", {}, demo)
     for name, (llms, lines) in EXAMPLES.items():
         print(f"\n=== example-{name}")
         run(name, llms, lines)
