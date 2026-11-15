@@ -75,10 +75,13 @@ def nudge_pointer(game: Game, character_id: str) -> dict | None:
 def hint_target(game: Game) -> dict | None:
     """The person (and their place) the `hint` tool points to, or None if every
     nudge clue is found. Never the clue's text."""
-    clue_id = next_unfound(game)
+    order = json.loads(state.case_meta(game)["nudge_order"])
+    found = state.found_clue_ids(game)
+    candidates = [(c, knowers(game, c)) for c in order if c not in found]
+    clue_id, people = next(((c, k) for c, k in candidates if k), (None, []))
     if clue_id is None:
         return None
-    character_id = knowers(game, clue_id)[0]
+    character_id = people[0]
     row = game.conn.execute("SELECT name FROM characters WHERE id = ?", (character_id,)).fetchone()
     place = rules.place(game, rules.character_place(game, character_id))
     return {"clue_id": clue_id, "character": row["name"], "place": place["name"]}

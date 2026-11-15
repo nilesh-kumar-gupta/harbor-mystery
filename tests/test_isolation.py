@@ -154,3 +154,92 @@ def test_a_failing_check_model_does_not_block_the_reply(ctx):
     out = REGISTRY.call(ctx, "talk", {"character": "mira", "message": "Hello"}, "gm")
     assert out["reply"] == "Morning."
     assert spans_of(ctx, "llm_call")[-1]["status"] == "error"
+
+
+# ---- M4 review: paraphrases, side effects and false rejections ----------------
+
+PARAPHRASES = [(c, clue.id, kw) for c, clue_id in UNKNOWN for clue in CASE.clues
+               if clue.id == clue_id for kw in clue.keywords]
+
+
+@pytest.mark.parametrize("character_id, clue_id, keyword", PARAPHRASES)
+def test_a_paraphrase_with_any_one_keyword_is_caught(ctx, character_id, clue_id, keyword):
+    """Not just verbatim clue text: one keyword in other words is a leak, unless the
+    word is part of the character's own persona or speech style."""
+    char = CHARS[character_id]
+    verdict = referee.code_check(ctx.game, character_id, "Anything to tell me?",
+                                 f"Word is, {keyword} came into it somehow.")
+    if keyword.lower() in f"{char.persona} {char.speech_style}".lower():
+        assert verdict.ok                         # e.g. Tom's own bad knee
+    else:
+        assert not verdict.ok and clue_id in verdict.leaked
+
+
+def test_the_brief_example_leak_without_bolt_is_caught(ctx):
+    verdict = referee.code_check(ctx.game, "odrin", "Who did it?",
+                                 "Brask bought cutters from Ysolde two days back.")
+    assert not verdict.ok and verdict.leaked == ["C5"]
+
+
+@pytest.mark.parametrize("character_id, message, reply", [
+    ("tom", "How are you?", "My knee's bad today, friend. Mackerel?"),
+    ("hale", "How's business?", "These harbor fees will be the death of me."),
+    ("mira", "Did you see a skiff?", "A skiff? No... ask Bram."),
+    ("bram", "Who should I ask?", "Anyone cutting a cable needed cutters. Ysolde sells them."),
+])
+def test_ordinary_replies_are_not_rejected(ctx, character_id, message, reply):
+    assert referee.code_check(ctx.game, character_id, message, reply).ok
+
+
+def test_a_rejected_draft_writes_nothing(ctx):
+    """Mira reveals C3 in each draft but every draft leaks C5: the player hears only the
+    fallback line, so C3 must not reach the notebook."""
+    drafts = []
+    for _ in range(3):
+        drafts += [{"tool_calls": [("reveal_clue", {"clue_id": "C3"})]},
+                   "A limp and a lantern, near two. And Tom bought bolt cutters."]
+    out = make_active(ctx, "mira", runner=make_npc_runner(ScriptedLLM(drafts)))
+    assert out["fallback"] is True and out["new_clues"] == []
+    assert "C3" not in state.found_clue_ids(ctx.game)
+    assert len(spans_of(ctx, "referee")) == 3     # the spans are kept
+
+
+def test_a_regenerated_draft_keeps_only_its_own_writes(ctx):
+    drafts = [{"tool_calls": [("reveal_clue", {"clue_id": "C8"})]},
+              "The tavern was loud till 3 a.m. and Tom bought bolt cutters.",
+              {"tool_calls": [("reveal_clue", {"clue_id": "C3"})]},
+              "A limp and a lantern, near two."]
+    out = make_active(ctx, "mira", runner=make_npc_runner(ScriptedLLM(drafts)))
+    assert out["new_clues"] == ["C3"] and "C8" not in state.found_clue_ids(ctx.game)
+
+
+def test_a_paraphrase_the_keywords_miss_is_caught_by_the_model_check(ctx):
+    checker = ScriptedLLM(lambda system, messages, tools:
+                          "LEAK" if "no lights" in messages[0]["content"] else "OK")
+    ctx.referee_llm = checker
+    llm = ScriptedLLM(["A boat went out with no lights, I'd say.", "Quiet night, love."])
+    out = make_active(ctx, "mira", runner=make_npc_runner(llm))
+    assert out["reply"] == "Quiet night, love."
+    assert [v["status"] for v in spans_of(ctx, "referee")] == ["rejected", "ok"]
+
+
+def test_the_model_check_is_told_what_the_player_stated(ctx):
+    REGISTRY.call(ctx, "look", {}, "gm")
+    REGISTRY.call(ctx, "go", {"place": "chandlery"}, "gm")
+    checker = ScriptedLLM(["OK"])
+    ctx.referee_llm = checker
+    ctx.npc_runner = make_npc_runner(ScriptedLLM(["Cut clean, you say."]))
+    REGISTRY.call(ctx, "talk", {"character": "ysolde", "message": "The cable was cut clean."},
+                  "gm")
+    sent = json.loads(checker.calls[0]["messages"][0]["content"])
+    assert sent["facts_the_player_stated"] == [
+        "The winch cable was cut clean, and the pins were knocked loose."]
+
+
+def test_the_referee_cannot_write(ctx, monkeypatch):
+    def writing_check(*a, **k):
+        state.advance_clock(ctx.game, 60)
+    monkeypatch.setattr(referee, "check", writing_check)
+    out = make_active(ctx, "mira", runner=lambda *a: Draft("Hello."))
+    assert out["ok"] is False and "WriteOutsideTool" in out["error"]
+    assert state.read(ctx.game)["clock"] == 360

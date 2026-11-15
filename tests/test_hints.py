@@ -151,3 +151,9 @@ def test_hint_when_nothing_is_left(make_session):
     assert set(CASE.nudge_order) <= state.found_clue_ids(ctx.game)
     out = REGISTRY.call(ctx, "hint", {}, "gm")
     assert out["ok"] and out["target"] is None
+
+
+def test_hint_skips_a_nudge_clue_nobody_knows(ctx):
+    ctx.game.conn.execute("DELETE FROM knowledge WHERE clue_id = 'C2'")   # a broken case
+    out = REGISTRY.call(ctx, "hint", {}, "gm")
+    assert out["ok"] and out["target"] == {"character": "Mira Tolle", "place": "Harbor Quay"}

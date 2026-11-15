@@ -71,7 +71,7 @@
      "text": "A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market."},
     {"id": "C4", "kind": "opportunity", "found_at_place": null, "keywords": ["skiff"],
      "text": "A small unlit skiff left the fish market dock around 1:30 and returned around 2:30."},
-    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["bolt cutters"],
+    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["bolt cutters", "cutters"],
      "text": "Ysolde sold bolt cutters to Tom two days ago, paid in fish."},
     {"id": "C6", "kind": "opportunity", "found_at_place": null, "keywords": ["midnight", "knee"],
      "text": "Tom left the tavern at midnight, complaining about his knee."},

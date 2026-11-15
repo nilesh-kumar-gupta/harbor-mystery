@@ -4,7 +4,9 @@ Two checks, cheapest first:
 1. Code check. A reply that matches a clue's keywords is a leak unless that
    clue went through `reveal_clue` by this character in this conversation, is
    in the notebook from this character, or was named by the player in the
-   message being answered (ADR 001 #4, ADR 002).
+   message being answered (ADR 001 #4, ADR 002). The character's own pointer
+   lines are removed first, and a keyword that also occurs in the player's
+   message or in the character's persona and speech style does not count.
 2. Model check, only when the code check passes: a cheap model call that sees
    the facts this character may use and the reply, and answers OK or LEAK.
 
@@ -15,6 +17,7 @@ with a rejection (regenerate up to 2 times, then the fallback line).
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from harbor.engine import rules, state
@@ -40,11 +43,29 @@ def allowed_clues(game: Game, character_id: str, message: str) -> set[str]:
     return allowed
 
 
+def _strip_own_lines(game: Game, character_id: str, reply: str) -> str:
+    """Remove this character's own pointer lines (chosen by the engine) from the reply."""
+    for row in game.conn.execute("SELECT line FROM pointers WHERE character_id = ?",
+                                 (character_id,)):
+        reply = re.sub(re.escape(row["line"]), " ", reply, flags=re.IGNORECASE)
+    return reply
+
+
 def code_check(game: Game, character_id: str, message: str, reply: str) -> Verdict:
+    """Keyword check. A keyword does not count when it is in the player's message (an
+    echo adds no fact) or in this character's own persona and speech style."""
     allowed = allowed_clues(game, character_id, message)
+    own = game.conn.execute("SELECT persona, speech_style FROM characters WHERE id = ?",
+                            (character_id,)).fetchone()
+    harmless = f"{message} {own['persona']} {own['speech_style']}"
+    text = _strip_own_lines(game, character_id, reply)
     leaked = []
     for clue in game.conn.execute("SELECT id, keywords FROM clues ORDER BY rowid"):
-        if clue["id"] not in allowed and rules.matches(reply, json.loads(clue["keywords"])):
+        if clue["id"] in allowed:
+            continue
+        said = [k for k in rules.matches(text, json.loads(clue["keywords"]))
+                if not rules.matches(harmless, [k])]
+        if said:
             leaked.append(clue["id"])
     if leaked:
         return Verdict(False, leaked, "reply matches clues not revealed by this character: "
@@ -57,9 +78,11 @@ def model_check_input(game: Game, card: dict, message: str, reply: str) -> str:
     facts = [r["text"] for r in rules.knowledge(game, card["id"]) if r["clue_id"] in allowed]
     pointers = [r["line"] for r in game.conn.execute(
         "SELECT line FROM pointers WHERE character_id = ? ORDER BY rowid", (card["id"],))]
+    stated = [rules.clue(game, c)["text"] for c in sorted(rules.shown_clues(game, message))]
     return json.dumps({"character": f"{card['name']}, the {card['role']}",
                        "allowed_facts": facts, "may_send_the_player_to": pointers,
-                       "player_said": message, "reply": reply}, indent=1)
+                       "player_said": message, "facts_the_player_stated": stated,
+                       "reply": reply}, indent=1)
 
 
 def check(ctx, card: dict, message: str, reply: str, llm, system: str,
@@ -96,6 +119,8 @@ def _model_check(ctx, llm, system: str, content: str) -> Verdict:
             return Verdict(True, reason="model check unavailable")
         span.model = reply.model
         span.input_tokens, span.output_tokens = reply.input_tokens, reply.output_tokens
+        span.attrs["gen_ai.usage.input_tokens"] = reply.input_tokens
+        span.attrs["gen_ai.usage.output_tokens"] = reply.output_tokens
         span.output = {"text": reply.text}
     answer = reply.text.strip().upper()
     if answer.startswith("LEAK"):

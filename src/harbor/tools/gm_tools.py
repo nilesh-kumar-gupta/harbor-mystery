@@ -126,14 +126,28 @@ def _npc_reply(ctx: Context, who, message: str) -> tuple[str, bool]:
     card = {key: who[key] for key in
             ("id", "name", "role", "persona", "speech_style", "fallback_line")}
     note = None
+    conn = ctx.game.conn
     for attempt in range(1, REFEREE_ATTEMPTS + 1):
+        # an attempt is all or nothing: what a rejected draft's tool calls wrote (a
+        # reveal, a trust step) is rolled back, since the player never hears it
+        savepoint = f"npc_attempt_{attempt}"
+        conn.execute(f"SAVEPOINT {savepoint}")
         draft, span = _draft(ctx, card, message, note, attempt)
+        verdict = None
+        if draft is not None:
+            depth, ctx.game.tool_depth = ctx.game.tool_depth, 0   # the referee only reads
+            try:
+                verdict = referee.check(ctx, card, message, draft, ctx.referee_llm,
+                                        prompts.load("referee"), attempt)
+            finally:
+                ctx.game.tool_depth = depth
+        if verdict is not None and verdict.ok:
+            conn.execute(f"RELEASE {savepoint}")
+            return draft, False
+        conn.execute(f"ROLLBACK TO {savepoint}")
+        conn.execute(f"RELEASE {savepoint}")
         if draft is None:          # the agent failed, hit its cap or said nothing
             return who["fallback_line"], True
-        verdict = referee.check(ctx, card, message, draft, ctx.referee_llm,
-                                prompts.load("referee"), attempt)
-        if verdict.ok:
-            return draft, False
         ctx.tracer.amend(span, status="rejected")
         note = referee.LEAK_NOTE
     return who["fallback_line"], True
