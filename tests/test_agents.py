@@ -270,7 +270,7 @@ def test_the_npc_agent_cannot_write_state_except_through_its_tools(ctx):
         return "hello"
     ctx.test_npc_llm = ScriptedLLM(sneaky)
     out = talk(ctx, "mira", "hello")
-    assert out["ok"] and out["reply"] == "Oh, I... no, I've lost the thread of it. These nets won't mend themselves."
+    assert out["ok"] and out["reply"] == "Oh, I... where was I? No, it's gone, I've lost the thread. These nets won't mend themselves, will they."
     assert out["fallback"] is True and state.read(ctx.game)["clock"] == 360 + 10
 
 
@@ -290,7 +290,7 @@ def test_the_npc_sees_only_its_card_and_the_message(ctx):
 def test_a_fifth_npc_tool_call_ends_with_the_fallback_line(ctx):
     npc(ctx, *[{"tool_calls": [("recall_conversation", {})]}] * 5)
     out = talk(ctx, "mira", "hello")
-    assert out["reply"].startswith("Oh, I... no") and out["fallback"]
+    assert out["reply"].startswith("Oh, I... where was I?") and out["fallback"]
     assert ctx.game.conn.execute(
         "SELECT COUNT(*) FROM spans WHERE name = 'recall_conversation'").fetchone()[0] == 4
 

@@ -1,0 +1,116 @@
+{
+  "case_id": "gaiety",
+  "title": "Curtain Up at the Gaiety",
+  "premise": "The Gaiety Theatre in the market town of Brindle opens its new play tonight at seven. Overnight, the painted garden backdrop for the last act was slashed to ribbons. The manager has sent for you to find out who did it before the curtain rises.",
+  "start_place": "stage",
+  "start_clock": "09:00",
+  "end_clock": "19:00",
+
+  "places": [
+    {"id": "stage", "name": "Stage", "description": "Bare boards under a single working light. The last act's garden backdrop hangs from the fly bars in ribbons, and the empty stalls wait in the dark beyond."},
+    {"id": "stage_door", "name": "Stage Door", "description": "A narrow passage by the alley door: a cubbyhole with a gas ring and a kettle, a rack of keys, and the sign-in book lying open on its shelf."},
+    {"id": "dressing_rooms", "name": "Dressing Rooms", "description": "A corridor of small rooms that smell of greasepaint and face powder. One door has a gilt star on it, hung slightly crooked."},
+    {"id": "paint_loft", "name": "Paint Loft", "description": "A long room up a ladder above the wings, where painted flats lean against the walls and every surface is spattered with distemper."}
+  ],
+
+  "exits": [
+    ["stage", "stage_door"],
+    ["stage", "dressing_rooms"],
+    ["stage", "paint_loft"]
+  ],
+
+  "characters": [
+    {
+      "id": "marcus", "name": "Marcus Fenn", "role": "theatre manager", "start_place": "stage", "schedule": [],
+      "persona": "Anxious, money-minded and proud of his own judgement. Rewrote the last act himself to please the paying public. Wants the curtain up tonight whatever it takes.",
+      "speech_style": "Rapid and fretful, full of exclamations and sums of money; wrings his hands in every sentence.",
+      "fallback_line": "Not now, not now! Every minute that curtain stays down costs me money."
+    },
+    {
+      "id": "edwin", "name": "Edwin Sallow", "role": "playwright", "start_place": "stage", "schedule": [],
+      "persona": "Proud, wounded and fastidious about words. Hides how bitter he is that his storm ending was cut. Insists he went home early and slept soundly.",
+      "speech_style": "Elaborate, literary sentences with the odd quotation; corrects other people's grammar.",
+      "fallback_line": "I am a playwright, not a witness. Do find someone else to interrogate."
+    },
+    {
+      "id": "lottie", "name": "Lottie Prim", "role": "stage-door keeper", "start_place": "stage_door", "schedule": [],
+      "persona": "Sharp-eyed and kindly. Has kept the stage door for thirty years, sleeps in her cubbyhole in opening week, and knows every footstep in the building.",
+      "speech_style": "Brisk and motherly; calls everyone 'duck' and keeps knitting while she talks.",
+      "fallback_line": "Couldn't tell you, duck. I only mind the door."
+    },
+    {
+      "id": "felix", "name": "Felix Hart", "role": "leading man", "start_place": "dressing_rooms", "schedule": [],
+      "persona": "Vain, handsome and loud about his grievances. Detested the new last act and told anyone who would listen.",
+      "speech_style": "Grand and declamatory, as if always on stage; speaks of himself in the third person when upset.",
+      "fallback_line": "Felix Hart does not deal in tittle-tattle. Felix Hart deals in art."
+    },
+    {
+      "id": "nell", "name": "Nell Hobb", "role": "scene painter", "start_place": "paint_loft", "schedule": [],
+      "persona": "Practical, blunt and furious. Spent three weeks painting the garden backdrop. Wary of strangers who might think the damage was her doing.",
+      "speech_style": "Plain and short, full of painter's trade words; does not suffer fools.",
+      "fallback_line": "I paint scenery. Talk to me about scenery or let me get on."
+    }
+  ],
+
+  "clues": [
+    {"id": "C1", "kind": "method", "found_at_place": "stage", "keywords": ["straight cuts", "sharp blade"], "implicates": [],
+     "text": "The garden backdrop was cut in three long, straight cuts from top to bottom: the work of a sharp blade, not a tear."},
+    {"id": "C2", "kind": "motive", "found_at_place": null, "keywords": ["never be played", "swore the garden scene"], "implicates": ["edwin"],
+     "text": "Last week Marcus cut Edwin's storm ending and wrote a garden scene in its place; Edwin swore the garden scene would never be played."},
+    {"id": "C3", "kind": "alibi", "found_at_place": null, "keywords": ["signed out", "lodgings"], "implicates": [],
+     "text": "The sign-in book shows Edwin signed out at ten last night, saying he was off home to his lodgings."},
+    {"id": "C4", "kind": "opportunity", "found_at_place": null, "keywords": ["let himself back in", "without signing", "never signed"], "implicates": ["edwin"],
+     "text": "Near one in the morning Edwin let himself back in by the stage door without signing the book and went toward the paint loft ladder; nobody else came in after ten."},
+    {"id": "C5", "kind": "method", "found_at_place": null, "keywords": ["scene knife", "knife is missing", "asking which backdrop"], "implicates": ["edwin"],
+     "text": "Nell's long scene knife is missing from her rack, and Edwin came up to the loft yesterday asking which backdrop was the garden."},
+    {"id": "C6", "kind": "red_herring", "found_at_place": null, "keywords": ["before the whole company", "acted in front of", "act in front of"], "implicates": ["felix"],
+     "text": "Felix swore before the whole company that he would take the garden backdrop down himself before he acted in front of it."},
+    {"id": "C7", "kind": "alibi", "found_at_place": null, "keywords": ["supper party", "crown hotel"], "implicates": [],
+     "text": "Felix left at six for a supper party at the Crown Hotel and did not come back until the nine o'clock call."},
+    {"id": "C8", "kind": "motive", "found_at_place": null, "keywords": ["restore his ending", "admits he cut"], "implicates": ["edwin"],
+     "text": "Edwin admits he cut the backdrop with Nell's knife: with no garden to play, Marcus would have to restore his ending."}
+  ],
+
+  "knowledge": [
+    {"character_id": "marcus", "clue_id": "C1", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "marcus", "clue_id": "C2", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "marcus", "clue_id": "C6", "unlock_topics": ["felix", "hart", "who", "anyone", "suspect", "enemies", "hated", "actor"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "edwin", "clue_id": "C3", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "edwin", "clue_id": "C8", "unlock_topics": [], "min_trust": 2, "related_clues": ["C4", "C5"], "unlock_if_shown": ["C4", "C5"]},
+    {"character_id": "lottie", "clue_id": "C3", "unlock_topics": ["book", "sign", "edwin", "sallow", "ten", "left", "leave"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "lottie", "clue_id": "C4", "unlock_topics": ["night", "overnight", "edwin", "sallow", "door", "late", "morning", "came", "come", "enter", "anyone", "anybody", "who", "see", "saw", "hear", "unusual"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "lottie", "clue_id": "C7", "unlock_topics": ["felix", "hart", "supper", "crown", "actor"], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "felix", "clue_id": "C7", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "felix", "clue_id": "C6", "unlock_topics": [], "min_trust": 2, "related_clues": [], "unlock_if_shown": ["C6"]},
+    {"character_id": "nell", "clue_id": "C1", "unlock_topics": [], "min_trust": 0, "related_clues": [], "unlock_if_shown": []},
+    {"character_id": "nell", "clue_id": "C5", "unlock_topics": ["knife", "knives", "blade", "cut", "tool", "edwin", "sallow", "backdrop", "garden", "missing", "loft"], "min_trust": 1, "related_clues": ["C1"], "unlock_if_shown": []}
+  ],
+
+  "pointers": [
+    {"character_id": "marcus", "clue_id": "C4", "points_to_character": "lottie", "misleading": false, "line": "Ask Lottie Prim at the stage door! Nobody comes or goes without her knowing."},
+    {"character_id": "marcus", "clue_id": "C5", "points_to_character": "nell", "misleading": false, "line": "Ask Nell Hobb up in the paint loft. Every blade in this building belongs to her."},
+    {"character_id": "lottie", "clue_id": "C2", "points_to_character": "marcus", "misleading": false, "line": "Ask Marcus Fenn what he did to the last act, duck, and what Mr Sallow said about it."},
+    {"character_id": "nell", "clue_id": "C6", "points_to_character": "felix", "misleading": true, "line": "Ask Felix Hart what he said about my backdrop. Loudly. In front of everyone."},
+    {"character_id": "nell", "clue_id": "C4", "points_to_character": "lottie", "misleading": false, "line": "Ask Lottie Prim. She sleeps by the stage door all opening week."},
+    {"character_id": "felix", "clue_id": "C2", "points_to_character": "marcus", "misleading": false, "line": "Ask Marcus Fenn whom his butchered last act has offended. Felix Hart is not the only one."}
+  ],
+
+  "solution": {
+    "culprit_id": "edwin",
+    "motive": "With no garden backdrop to play, Marcus would have to put Edwin's storm ending back.",
+    "method": "He let himself back in at night and cut the backdrop with Nell's scene knife.",
+    "required_clue_ids": ["C2", "C4", "C5"],
+    "min_supporting": 2,
+    "true_timeline": [
+      "Yesterday afternoon Edwin asks Nell which backdrop is the garden.",
+      "18:00 Felix leaves for a supper party at the Crown Hotel.",
+      "22:00 Edwin signs out at the stage door and goes home.",
+      "About 01:00 he lets himself back in without signing the book.",
+      "About 01:15 he takes Nell's scene knife from the paint loft and cuts the garden backdrop.",
+      "About 01:40 he leaves by the alley door.",
+      "09:00 The company is called and the damage is found."
+    ]
+  },
+
+  "nudge_order": ["C4", "C2", "C5"]
+}

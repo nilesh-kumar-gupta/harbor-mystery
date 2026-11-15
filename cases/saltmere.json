@@ -1,18 +1,18 @@
 {
   "case_id": "saltmere",
   "title": "The Saltmere Winch",
-  "premise": "The village of Saltmere wants its silting harbor dredged before the autumn trade ships arrive. Overnight, the dredger's winch cable was cut and its pins knocked loose. You are a stranger sent to find out who did it.",
+  "premise": "Saltmere's harbor is silting up, and the village has hired a dredger to clear it before the autumn trade ships come. Last night someone wrecked the dredger's winch. You are a stranger, sent to find out who did it, and you have until six this evening.",
   "start_place": "quay",
   "start_clock": "06:00",
   "end_clock": "18:00",
 
   "places": [
-    {"id": "quay", "name": "Harbor Quay", "description": "A stone quay slick with morning damp. The dredger sits idle at its mooring, its winch hanging slack."},
-    {"id": "office", "name": "Harbormaster's Office", "description": "A cramped room of ledgers, tide tables and a stove that has gone cold."},
-    {"id": "fish_market", "name": "Fish Market", "description": "Trestle tables under a tarred awning, with a small dock behind for the skiffs."},
-    {"id": "chandlery", "name": "Chandlery", "description": "Rope, lamp oil and iron tools, each shelf labelled in a careful hand."},
-    {"id": "salt_cask", "name": "The Salt Cask", "description": "A low-beamed tavern that smells of smoke and last night's ale."},
-    {"id": "lighthouse", "name": "Lighthouse", "description": "A whitewashed tower on the point. From the gallery the whole harbor lies open."}
+    {"id": "quay", "name": "Harbor Quay", "description": "A long stone quay, slick with morning damp and strung with drying nets. The hired dredger rides idle at her mooring, her winch hanging slack."},
+    {"id": "office", "name": "Harbormaster's Office", "description": "A cramped room above the quay, all ledgers and tide tables. The stove has gone cold, and the harbormaster's chair is worn to the shape of him."},
+    {"id": "fish_market", "name": "Fish Market", "description": "Trestle tables under a tarred awning, slippery with scales. Behind them is a little dock where the small boats tie up."},
+    {"id": "chandlery", "name": "Chandlery", "description": "Coils of rope, casks of lamp oil and racks of iron tools, every shelf labelled in a small, careful hand."},
+    {"id": "salt_cask", "name": "The Salt Cask", "description": "A low-beamed tavern smelling of pipe smoke and last night's ale, its shutters still half closed against the morning."},
+    {"id": "lighthouse", "name": "Lighthouse", "description": "A whitewashed tower on the point. From its gallery the whole harbor lies open, from the quay to the breakwater."}
   ],
 
   "exits": [
@@ -26,38 +26,38 @@
   "characters": [
     {
       "id": "odrin", "name": "Odrin Vale", "role": "harbormaster", "start_place": "office", "schedule": [],
-      "persona": "Gruff and tired. Wants the dredging done.",
-      "speech_style": "Short, blunt sentences. Little patience for small talk.",
-      "fallback_line": "I've a harbor to run. Ask me something I can answer."
+      "persona": "Harbormaster for twenty years: gruff, tired and short of sleep. Fought hard for the dredging and takes the sabotage as a personal insult.",
+      "speech_style": "Short, blunt sentences. No patience for small talk; ends most answers with a grunt.",
+      "fallback_line": "I've a harbor to run, and you're standing in it. Ask me something I can answer."
     },
     {
       "id": "mira", "name": "Mira Tolle", "role": "net-mender", "start_place": "quay", "schedule": [],
-      "persona": "Warm, up at all hours, always with a net in her lap.",
-      "speech_style": "Talks in half-finished thoughts that trail off and circle back.",
-      "fallback_line": "Oh, I... no, I've lost the thread of it. These nets won't mend themselves."
+      "persona": "Warm and sleepless. Mends nets on the quay at all hours, always with one in her lap, and notices more than she lets on.",
+      "speech_style": "Talks in half-finished thoughts that trail away, then circle back to where she started.",
+      "fallback_line": "Oh, I... where was I? No, it's gone, I've lost the thread. These nets won't mend themselves, will they."
     },
     {
       "id": "tom", "name": "Tom Brask", "role": "fishmonger", "start_place": "fish_market", "schedule": [],
-      "persona": "Jovial and evasive. Has a bad knee. Claims he was home asleep all night.",
-      "speech_style": "Loud, friendly, quick to change the subject to fish.",
-      "fallback_line": "Ha! You'll get no gossip from me, friend. Mackerel's fresh, though."
+      "persona": "Jovial, loud and evasive, with a bad knee he blames on the weather. Claims he was home asleep all night.",
+      "speech_style": "Loud and friendly; laughs too readily and steers every question back to fish.",
+      "fallback_line": "Ha! You'll get no gossip from me, friend. Now, the mackerel's fresh this morning."
     },
     {
       "id": "ysolde", "name": "Ysolde Crane", "role": "chandler", "start_place": "chandlery", "schedule": [],
-      "persona": "Precise and guarded about her customers.",
-      "speech_style": "Measured and exact. Answers the question asked and no more.",
+      "persona": "Precise, careful and private. Keeps a ledger of every sale and guards her customers' business as if it were her own.",
+      "speech_style": "Measured and exact. Answers the question asked, and not one word more.",
       "fallback_line": "I don't discuss my customers' purchases."
     },
     {
       "id": "bram", "name": "Bram Oyle", "role": "lighthouse keeper", "start_place": "lighthouse", "schedule": [],
-      "persona": "Quiet. Notices boats and lights.",
-      "speech_style": "Few words, long pauses, plain observations.",
+      "persona": "Quiet and watchful. Keeps the light on the point and notices every boat and every lamp on the water.",
+      "speech_style": "Few words and long pauses; plain observations, never guesses.",
       "fallback_line": "Couldn't say. I only watch the water."
     },
     {
       "id": "hale", "name": "Hale Pruitt", "role": "tavern keeper", "start_place": "salt_cask", "schedule": [],
-      "persona": "A gossip who knows everyone's business and resents the harbor fees.",
-      "speech_style": "Chatty and confiding, leans in as if sharing a secret.",
+      "persona": "A gossip who knows everyone's business, keeps a bar that rarely closes before the small hours, and resents the harbor fees.",
+      "speech_style": "Chatty and confiding; leans across the bar as if every word were a secret.",
       "fallback_line": "Now that I couldn't tell you. Another drink while you think on it?"
     }
   ],
@@ -80,7 +80,7 @@
     {"id": "C8", "kind": "alibi", "found_at_place": null, "keywords": ["never left the bar", "3 a.m."], "implicates": [],
      "text": "The tavern was lit and noisy until about 3 a.m., and Hale never left the bar."},
     {"id": "C9", "kind": "motive", "found_at_place": null, "keywords": ["monopoly", "confess"], "implicates": ["tom"],
-     "text": "Tom admits he cut the cable: bigger ships would end his monopoly selling to the small boats."}
+     "text": "Tom confesses that he cut the cable: bigger ships would end his monopoly selling to the small boats."}
   ],
 
   "knowledge": [
@@ -98,11 +98,11 @@
   ],
 
   "pointers": [
-    {"character_id": "odrin", "clue_id": "C3", "points_to_character": "mira", "misleading": false, "line": "Ask Mira. She's up all hours."},
-    {"character_id": "odrin", "clue_id": "C7", "points_to_character": "hale", "misleading": true, "line": "If anyone wished this harbor ill, it's Hale Pruitt."},
+    {"character_id": "odrin", "clue_id": "C3", "points_to_character": "mira", "misleading": false, "line": "Ask Mira Tolle on the quay. She's up all hours with her nets."},
+    {"character_id": "odrin", "clue_id": "C7", "points_to_character": "hale", "misleading": true, "line": "If anyone in Saltmere wished this harbor ill, it's Hale Pruitt at the Salt Cask."},
     {"character_id": "mira", "clue_id": "C4", "points_to_character": "bram", "misleading": false, "line": "Ask Bram. The lighthouse sees the water."},
-    {"character_id": "bram", "clue_id": "C5", "points_to_character": "ysolde", "misleading": false, "line": "Anyone cutting a cable needed cutters. Ysolde sells them."},
-    {"character_id": "hale", "clue_id": "C2", "points_to_character": "odrin", "misleading": false, "line": "Odrin chaired that meeting. He'll tell you who shouted loudest."}
+    {"character_id": "bram", "clue_id": "C5", "points_to_character": "ysolde", "misleading": false, "line": "Whoever cut that cable needed cutters. Ysolde at the chandlery sells them."},
+    {"character_id": "hale", "clue_id": "C2", "points_to_character": "odrin", "misleading": false, "line": "Odrin chaired that meeting. He'll tell you who shouted the loudest."}
   ],
 
   "solution": {
