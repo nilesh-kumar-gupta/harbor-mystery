@@ -215,3 +215,27 @@ def test_virtual_talk_returns_schema_errors_as_values(ctx):
     assert gm.execute(ctx, "talk", {"character": "mira"})["error"] == "missing argument 'message'"
     assert gm.execute(ctx, "talk", {"character": "mira", "message": 3})["error"] == "argument 'message' must be of type string"
     assert events.log(ctx.game.conn, ctx.game.run_id) == before
+
+
+def test_finalize_always_supplies_code_check_and_leak_note(ctx, monkeypatch):
+    from harbor import referee
+    from harbor.engine import interaction
+    original = interaction.finalize
+    checks = []
+    def inspected(game, iid, check, **kwargs):
+        checks.append(check)
+        assert check is referee.code_check
+        return original(game, iid, check, **kwargs)
+    monkeypatch.setattr(interaction, "finalize", inspected)
+    assert not call(ctx, "finalize_talk", interaction_id="absent")["ok"]
+    ids = begin(ctx, message="hello")
+    draft(ctx, ids, "bolt cutters")
+    call(ctx, "submit_verdict", "referee", **ids, verdict="OK")
+    assert finalize(ctx, ids)["reason_code"] == "code_leak"
+    ids["attempt"] = 2
+    assert call(ctx, "npc_context", "npc", **ids)["note"] == referee.LEAK_NOTE
+    draft(ctx, ids)
+    call(ctx, "submit_verdict", "referee", **ids, verdict="OK")
+    assert finalize(ctx, ids)["outcome"] == "accepted"
+    assert finalize(ctx, ids)["already_finalized"]
+    assert len(checks) == 4
