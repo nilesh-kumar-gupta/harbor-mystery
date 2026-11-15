@@ -1,0 +1,64 @@
+The Saltmere Winch
+The village of Saltmere wants its silting harbor dredged before the autumn trade ships arrive. Overnight, the dredger's winch cable was cut and its pins knocked loose. You are a stranger sent to find out who did it.
+Commands: look | go <place> | talk <person>: <what you say> | notebook | hint | accuse <person>: <motive> <clue ids, e.g. C3 C5> | help | quit
+> look
+Harbor Quay [06:05]
+A stone quay slick with morning damp. The dredger sits idle at its mooring, its winch hanging slack.
+You notice: The winch cable was cut clean, and the pins were knocked loose. [C1]
+Here: Mira Tolle.
+Exits: Harbormaster's Office, Fish Market, Chandlery.
+> talk mira: Did you see anyone on the quay last night?
+Mira Tolle: "A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market. Ask Bram. The lighthouse sees the water." [06:15]
+(New clue in your notebook: C3)
+> go lighthouse
+(no exit from Harbor Quay to Lighthouse) Exits: Harbormaster's Office, Fish Market, Chandlery.
+> go chandlery
+You walk to Chandlery. [06:25] Here: Ysolde Crane.
+> talk ysolde: Who has bought bolt cutters from you lately?
+Ysolde Crane: "I don't discuss my customers' purchases." [06:35]
+> talk ysolde: I understand. Please, it matters for the whole harbor.
+Ysolde Crane: "Ysolde sold bolt cutters to Tom two days ago, paid in fish." [06:45]
+(New clue in your notebook: C5)
+> go lighthouse
+You walk to Lighthouse. [06:55] Here: Bram Oyle.
+> talk bram: Did you see any boats or lights on the water at night?
+Bram Oyle: "A small unlit skiff left the fish market dock around 1:30 and returned around 2:30." [07:05]
+(New clue in your notebook: C4)
+> hint
+Hint: Odrin Vale at Harbormaster's Office could help. [07:25]
+> go chandlery
+You walk to Chandlery. [07:35] Here: Ysolde Crane.
+> go quay
+You walk to Harbor Quay. [07:45] Here: Mira Tolle.
+> go fish market
+You walk to Fish Market. [07:55] Here: Tom Brask.
+> talk tom: Where were you last night?
+Tom Brask: "Ha! You'll get no gossip from me, friend. Mackerel's fresh, though." [08:05]
+> go salt cask
+You walk to The Salt Cask. [08:15] Here: Hale Pruitt.
+> talk hale: When did Tom leave last night? He has a bad knee, hasn't he?
+Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Tom left the tavern at midnight, complaining about his knee. Odrin chaired that meeting. He'll tell you who shouted loudest." [08:25]
+(New clue in your notebook: C2)
+(New clue in your notebook: C6)
+> notebook
+C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)
+C3  A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market.  (Mira Tolle, Harbor Quay, 06:15)
+C5  Ysolde sold bolt cutters to Tom two days ago, paid in fish.  (Ysolde Crane, Chandlery, 06:45)
+C4  A small unlit skiff left the fish market dock around 1:30 and returned around 2:30.  (Bram Oyle, Lighthouse, 07:05)
+C2  Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch").  (Hale Pruitt, The Salt Cask, 08:25)
+C6  Tom left the tavern at midnight, complaining about his knee.  (Hale Pruitt, The Salt Cask, 08:25)
+> accuse tom: he wanted to keep his monopoly on the small boats C3 C4 C5 C6
+You accuse Tom Brask.
+Result: WIN
+Supporting clues that count: C3, C4, C5, C6
+Found: C2, C3, C4, C5, C6
+Missed: none
+The culprit: Tom Brask
+The motive: Bigger ships would end his monopoly selling to the small boats.
+What really happened:
+  00:00 Tom leaves the tavern.
+  01:30 He takes the skiff from the fish market dock.
+  About 01:45 he cuts the cable.
+  About 02:00 he walks back along the quay with a lantern.
+  02:30 The skiff returns.
+  03:00 The tavern closes.

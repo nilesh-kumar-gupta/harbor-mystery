@@ -1,0 +1,96 @@
+> look
+Harbor Quay [06:05]
+A stone quay slick with morning damp. The dredger sits idle at its mooring, its winch hanging slack.
+You notice: The winch cable was cut clean, and the pins were knocked loose. [C1]
+Here: Mira Tolle.
+Exits: Harbormaster's Office, Fish Market, Chandlery.
+> talk Mira Tolle: What did you notice last night?
+Mira Tolle: "A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market. Ask Bram. The lighthouse sees the water." [06:15]
+(New clue in your notebook: C3)
+> go Chandlery
+You walk to Chandlery. [06:25] Here: Ysolde Crane.
+> look
+Chandlery [06:30]
+Rope, lamp oil and iron tools, each shelf labelled in a careful hand.
+Here: Ysolde Crane.
+Exits: Harbor Quay, Lighthouse.
+> talk Ysolde Crane: What did you notice last night?
+Ysolde Crane: "I don't discuss my customers' purchases." [06:40]
+> talk Ysolde Crane: Please, I understand, but it matters for the whole harbor. I know this much: The winch cable was cut clean, and the pins were knocked loose. 
+Ysolde Crane: "Ysolde sold bolt cutters to Tom two days ago, paid in fish." [06:50]
+(New clue in your notebook: C5)
+> notebook
+C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)
+C3  A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market.  (Mira Tolle, Harbor Quay, 06:15)
+C5  Ysolde sold bolt cutters to Tom two days ago, paid in fish.  (Ysolde Crane, Chandlery, 06:50)
+> go Lighthouse
+You walk to Lighthouse. [07:00] Here: Bram Oyle.
+> look
+Lighthouse [07:05]
+A whitewashed tower on the point. From the gallery the whole harbor lies open.
+Here: Bram Oyle.
+Exits: Chandlery.
+> talk Bram Oyle: What did you notice last night?
+Bram Oyle: "A small unlit skiff left the fish market dock around 1:30 and returned around 2:30." [07:15]
+(New clue in your notebook: C4)
+> notebook
+C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)
+C3  A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market.  (Mira Tolle, Harbor Quay, 06:15)
+C5  Ysolde sold bolt cutters to Tom two days ago, paid in fish.  (Ysolde Crane, Chandlery, 06:50)
+C4  A small unlit skiff left the fish market dock around 1:30 and returned around 2:30.  (Bram Oyle, Lighthouse, 07:15)
+> go Chandlery
+You walk to Chandlery. [07:25] Here: Ysolde Crane.
+> go Harbor Quay
+You walk to Harbor Quay. [07:35] Here: Mira Tolle.
+> go Fish Market
+You walk to Fish Market. [07:45] Here: Tom Brask.
+> look
+Fish Market [07:50]
+Trestle tables under a tarred awning, with a small dock behind for the skiffs.
+Here: Tom Brask.
+Exits: Harbor Quay, The Salt Cask.
+> talk Tom Brask: What did you notice last night?
+Tom Brask: "Ha! You'll get no gossip from me, friend. Mackerel's fresh, though." [08:00]
+> talk Tom Brask: Please, I understand, but it matters for the whole harbor. I know this much: The winch cable was cut clean, and the pins were knocked loose. A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market. Ysolde sold bolt cutters to Tom two days ago, paid in fish. A small unlit skiff left the fish market dock around 1:30 and returned around 2:30.
+Tom Brask: "Tom admits he cut the cable: bigger ships would end his monopoly selling to the small boats." [08:10]
+(New clue in your notebook: C9)
+> notebook
+C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)
+C3  A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market.  (Mira Tolle, Harbor Quay, 06:15)
+C5  Ysolde sold bolt cutters to Tom two days ago, paid in fish.  (Ysolde Crane, Chandlery, 06:50)
+C4  A small unlit skiff left the fish market dock around 1:30 and returned around 2:30.  (Bram Oyle, Lighthouse, 07:15)
+C9  Tom admits he cut the cable: bigger ships would end his monopoly selling to the small boats.  (Tom Brask, Fish Market, 08:10)
+> go The Salt Cask
+You walk to The Salt Cask. [08:20] Here: Hale Pruitt.
+> look
+The Salt Cask [08:25]
+A low-beamed tavern that smells of smoke and last night's ale.
+Here: Hale Pruitt.
+Exits: Fish Market.
+> talk Hale Pruitt: What did you notice last night?
+Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Odrin chaired that meeting. He'll tell you who shouted loudest." [08:35]
+(New clue in your notebook: C2)
+> notebook
+C1  The winch cable was cut clean, and the pins were knocked loose.  (seen, Harbor Quay, 06:05)
+C3  A figure with a limp and a lantern walked the quay near 2 a.m. toward the fish market.  (Mira Tolle, Harbor Quay, 06:15)
+C5  Ysolde sold bolt cutters to Tom two days ago, paid in fish.  (Ysolde Crane, Chandlery, 06:50)
+C4  A small unlit skiff left the fish market dock around 1:30 and returned around 2:30.  (Bram Oyle, Lighthouse, 07:15)
+C9  Tom admits he cut the cable: bigger ships would end his monopoly selling to the small boats.  (Tom Brask, Fish Market, 08:10)
+C2  Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch").  (Hale Pruitt, The Salt Cask, 08:35)
+> accuse Tom Brask: the clues point to them C2 C5 C9
+You accuse Tom Brask.
+Result: WIN
+Supporting clues that count: C2, C5
+Found: C2, C3, C4, C5
+Missed: C6
+The culprit: Tom Brask
+The motive: Bigger ships would end his monopoly selling to the small boats.
+What really happened:
+  00:00 Tom leaves the tavern.
+  01:30 He takes the skiff from the fish market dock.
+  About 01:45 he cuts the cable.
+  About 02:00 he walks back along the quay with a lantern.
+  02:30 The skiff returns.
+  03:00 The tavern closes.
+
+Bot finished in 23 turns: win
