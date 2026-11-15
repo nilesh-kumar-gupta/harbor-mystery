@@ -1,9 +1,9 @@
 The Saltmere Winch
-The village of Saltmere wants its silting harbor dredged before the autumn trade ships arrive. Overnight, the dredger's winch cable was cut and its pins knocked loose. You are a stranger sent to find out who did it.
+Saltmere's harbor is silting up, and the village has hired a dredger to clear it before the autumn trade ships come. Last night someone wrecked the dredger's winch. You are a stranger, sent to find out who did it, and you have until six this evening.
 Commands: look | go <place> | talk <person>: <what you say> | notebook | hint | accuse <person>: <motive> <clue ids, e.g. C3 C5> | help | quit
 > look
 Harbor Quay [06:05]
-A stone quay slick with morning damp. The dredger sits idle at its mooring, its winch hanging slack.
+A long stone quay, slick with morning damp and strung with drying nets. The hired dredger rides idle at her mooring, her winch hanging slack.
 You notice: The winch cable was cut clean, and the pins were knocked loose. [C1]
 Here: Mira Tolle.
 Exits: Harbormaster's Office, Fish Market, Chandlery.
@@ -33,11 +33,11 @@ You walk to Harbor Quay. [07:45] Here: Mira Tolle.
 > go fish market
 You walk to Fish Market. [07:55] Here: Tom Brask.
 > talk tom: Where were you last night?
-Tom Brask: "Ha! You'll get no gossip from me, friend. Mackerel's fresh, though." [08:05]
+Tom Brask: "Ha! You'll get no gossip from me, friend. Now, the mackerel's fresh this morning." [08:05]
 > go salt cask
 You walk to The Salt Cask. [08:15] Here: Hale Pruitt.
 > talk hale: When did Tom leave last night? He has a bad knee, hasn't he?
-Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Tom left the tavern at midnight, complaining about his knee. Odrin chaired that meeting. He'll tell you who shouted loudest." [08:25]
+Hale Pruitt: "Tom spoke loudly against dredging at last week's town meeting ("bigger ships, smaller catch"). Tom left the tavern at midnight, complaining about his knee. Odrin chaired that meeting. He'll tell you who shouted the loudest." [08:25]
 (New clue in your notebook: C2)
 (New clue in your notebook: C6)
 > notebook

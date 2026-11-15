@@ -30,10 +30,7 @@ BOT_TURN_LIMIT = 40          # as in test_bot_player: the bot must win in under 
 
 # Clue keywords in text every character's prompt can draw on (premise, place
 # descriptions), so a natural reply may trip them. Listed when deliberate.
-INTENDED_SHARED_KEYWORDS = {
-    # Saltmere's predate this check; its wording rewrite may remove them.
-    "saltmere": {("premise", "C1", "pins"), ("fish_market", "C4", "skiff")},
-}
+INTENDED_SHARED_KEYWORDS: dict = {}
 
 # Clue keywords that occur in a character's own persona or speech style on purpose.
 # The referee ignores such a keyword for that character (ADR 002 #25), so each one

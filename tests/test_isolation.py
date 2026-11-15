@@ -213,7 +213,7 @@ def test_the_brief_example_leak_without_bolt_is_caught(ctx):
     ("tom", "How are you?", "My knee's bad today, friend. Mackerel?"),
     ("hale", "How's business?", "These harbor fees will be the death of me."),
     ("mira", "Did you see a skiff?", "A skiff? No... ask Bram."),
-    ("bram", "Who should I ask?", "Anyone cutting a cable needed cutters. Ysolde sells them."),
+    ("bram", "Who should I ask?", "Whoever cut that cable needed cutters. Ysolde at the chandlery sells them."),
 ])
 def test_ordinary_replies_are_not_rejected(ctx, character_id, message, reply):
     assert referee.code_check(ctx.game, character_id, message, reply).ok
