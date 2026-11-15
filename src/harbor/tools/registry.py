@@ -133,6 +133,9 @@ class Registry:
             return result
 
     def _run(self, ctx: Context, name: str, arguments: dict | None, audience: str) -> dict:
+        game = ctx.game
+        if audience != "engine" and state.read(game) is not None and state.is_over(game):
+            return error("game over")
         tool = self._tools.get(name) if isinstance(name, str) else None
         if tool is None or tool.audience != audience:
             return error(f"unknown tool {name!r}", tools=self.names(audience))

@@ -17,9 +17,7 @@ import re
 from collections import deque
 from dataclasses import dataclass, field
 
-QUESTION = ("What did you notice last night? Any lights or boats on the water, anyone "
-            "with a lantern on the quay, who was at the tavern, and what did Tom say at "
-            "the town meeting?")
+QUESTION = "What did you notice last night?"
 POLITE = "Please, I understand, but it matters for the whole harbor."
 ACCUSE_AT = 3                      # clues naming one person before the bot accuses
 
@@ -32,9 +30,17 @@ class BotGame:
     accusation: str | None = None
 
 
+def player_view(session):
+    """What a player gets back from one line: the narration, and whether the game ended."""
+    def turn(line: str) -> tuple[str, str, str | None]:
+        result = session.turn(line)
+        return result.narration, result.status, result.end.get("result")
+    return turn
+
+
 class Bot:
     def __init__(self, session, max_turns: int = 39) -> None:
-        self.session = session
+        self._turn = player_view(session)   # the bot keeps nothing else of the session
         self.max_turns = max_turns
         self.game = BotGame()
         self.place = None
@@ -48,17 +54,19 @@ class Bot:
     # ---- playing -------------------------------------------------------------
 
     def say(self, line: str) -> str:
-        result = self.session.turn(line)
+        narration, status, ending = self._turn(line)
         self.game.turns += 1
-        self.game.transcript.append((line, result.narration))
-        self._read(line, result.narration)
-        if result.status == "ended":
-            self.game.result = self.game.result or result.end.get("result")
-        return result.narration
+        self.game.transcript.append((line, narration))
+        self._read(line, narration)
+        if status == "ended":
+            self.game.result = self.game.result or ending
+        return narration
 
     def play(self) -> BotGame:
         self.say("look")
-        while self.game.result is None and self.game.turns < self.max_turns - 1:
+        # one pass can use two turns (ask and ask again, or go and look), and the
+        # accusation needs one more: stop with three in hand
+        while self.game.result is None and self.game.turns <= self.max_turns - 3:
             if len(self.clues) >= ACCUSE_AT and any(not t for t in self.clues.values()):
                 self.say("notebook")                  # learn the texts of new clues
                 continue
@@ -189,8 +197,7 @@ class Bot:
         m = re.match(r"^(.+?): \"(.*)\" \[", text, re.S)
         if m:
             reply = m.group(2)
-            for name in re.findall(r"\b(?:Ask|ask) ([A-Z][a-z]+(?: [A-Z][a-z]+)?)", reply) + \
-                    re.findall(r"([A-Z][a-z]+) sells", reply):
+            for name in re.findall(r"\b(?:Ask|ask) ([A-Z][a-z]+(?: [A-Z][a-z]+)?)", reply):
                 person = self._person(name)
                 if person and person != m.group(1) and person not in self.leads:
                     self.leads.append(person)

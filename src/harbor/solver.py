@@ -5,9 +5,12 @@ It works on the loaded Case, before any game exists, and answers two questions:
    place; clues by sight, or through a character whose unlock can be met (trust
    can rise one step for a polite repeat and one per related clue the player can
    hold, up to 2; or every `unlock_if_shown` clue is reachable).
-2. Do the reachable winning clues point to exactly one person? A clue points to
-   the characters its text names; the suspect is whoever is named by at least
-   `min_supporting` reachable winning clues, and there must be exactly one.
+2. Does the reachable evidence point to exactly one person? A clue points to
+   the characters its text names. Every reachable clue counts except red
+   herrings and alibis; a suspect is anyone named by at least `min_supporting`
+   of them, and there must be exactly one, the solution's culprit. Clues that
+   name nobody (C3, C4) are listed in the report: this name-based check cannot
+   see what they imply.
 """
 
 from __future__ import annotations
@@ -19,12 +22,16 @@ from dataclasses import dataclass
 from harbor.engine.case_loader import MAX_TRUST, Case
 
 
+NOT_EVIDENCE = ("red_herring", "alibi")
+
+
 @dataclass
 class SolverReport:
     reachable_places: set[str]
     reachable_clues: set[str]
     unreachable_required: list[str]
-    suspects: list[str]           # characters named by enough reachable winning clues
+    suspects: list[str]           # characters named by enough reachable evidence
+    unnamed: list[str]            # reachable evidence that names nobody
     problems: list[str]
 
     @property
@@ -81,13 +88,17 @@ def solve(case: Case) -> SolverReport:
         problems.append(f"only {winnable} winning clues are reachable; "
                         f"{sol.min_supporting} are needed")
     counts: dict[str, int] = {}
-    text = {c.id: c.text for c in case.clues}
-    for clue_id in sol.required_clue_ids:
-        if clue_id in clues:
-            for person in names_in(case, text[clue_id]):
-                counts[person] = counts.get(person, 0) + 1
+    unnamed = []
+    for clue in case.clues:
+        if clue.id not in clues or clue.kind in NOT_EVIDENCE:
+            continue
+        named = names_in(case, clue.text)
+        if not named:
+            unnamed.append(clue.id)
+        for person in named:
+            counts[person] = counts.get(person, 0) + 1
     suspects = sorted(p for p, n in counts.items() if n >= sol.min_supporting)
     if suspects != [sol.culprit_id]:
-        problems.append(f"the winning clues point to {suspects or 'nobody'}, "
+        problems.append(f"the evidence points to {suspects or 'nobody'}, "
                         f"not exactly to {sol.culprit_id!r}")
-    return SolverReport(places, clues, unreachable, suspects, problems)
+    return SolverReport(places, clues, unreachable, suspects, unnamed, problems)

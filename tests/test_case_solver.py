@@ -16,7 +16,8 @@ def test_saltmere_is_solvable_and_points_to_one_culprit(case):
     report = solve(case)
     assert report.ok, report.problems
     assert report.unreachable_required == []
-    assert report.suspects == ["tom"]
+    assert report.suspects == ["tom"]          # Hale (C7, C8) is a red herring and an alibi
+    assert report.unnamed == ["C1", "C3", "C4"]
     assert report.reachable_places == {p.id for p in case.places}
     assert report.reachable_clues == {c.id for c in case.clues}
 
@@ -55,6 +56,16 @@ def test_clues_pointing_at_two_people_is_a_problem():
             if c["id"] in ("C3", "C4"):
                 c["text"] += " Hale Pruitt was seen nearby."
     report = solve(mutated(blame_hale))
+    assert not report.ok and report.suspects == ["hale", "tom"]
+
+
+def test_evidence_outside_the_winning_list_still_counts():
+    """The red herring is excluded by its kind, not by the solution's own list."""
+    def herring_as_motive(d):
+        for c in d["clues"]:
+            if c["id"] in ("C7", "C8"):
+                c["kind"] = "motive"
+    report = solve(mutated(herring_as_motive))
     assert not report.ok and report.suspects == ["hale", "tom"]
 
 

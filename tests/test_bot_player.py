@@ -31,4 +31,15 @@ def test_the_bot_decides_only_from_narration(make_session):
     bot = Bot(session)
     game = bot.play()
     assert all(isinstance(line, str) and isinstance(text, str) for line, text in game.transcript)
-    assert "conn" not in vars(bot) and "case" not in vars(bot)
+    from harbor.session import Session
+    from harbor.tools import Context
+    held = list(vars(bot).values()) + [c.cell_contents for c in bot._turn.__closure__]
+    assert not any(isinstance(v, Context) for v in held)
+    assert [type(v) for v in held if isinstance(v, Session)] == [Session]  # only inside the view
+    assert set(vars(bot)) == {"_turn", "max_turns", "game", "place", "exits", "people_at",
+                              "asked", "leads", "clues", "visited"}
+
+
+def test_the_bot_keeps_inside_its_turn_budget(make_session):
+    for budget in (8, 12, 20):
+        assert Bot(make_session(run_id=f"b{budget}"), max_turns=budget).play().turns <= budget

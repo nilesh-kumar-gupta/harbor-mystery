@@ -66,6 +66,13 @@ def test_case_solution_is_read_only_by_scoring():
     assert set(readers) <= {"engine/schema.py", "engine/case_loader.py", "engine/scoring.py"}
 
 
+def test_the_solution_object_is_read_only_by_the_loader_and_solver():
+    import re
+    readers = {str(p.relative_to(SRC)) for p in SRC.rglob("*.py")
+               if re.search(r"\.solution\b", p.read_text(encoding="utf-8"))}
+    assert readers <= {"engine/case_loader.py", "solver.py"}
+
+
 def test_npc_tools_cannot_name_a_character():
     for schema in REGISTRY.schemas("npc"):
         for prop in schema["input_schema"]["properties"]:

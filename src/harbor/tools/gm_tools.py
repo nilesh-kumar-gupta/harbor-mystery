@@ -201,7 +201,7 @@ def accuse(ctx: Context, character: str, motive: str, clue_ids: list[str]) -> di
     if who is None:
         return error(f"unknown character {character!r}")
     found = state.found_clue_ids(game)
-    ids = list(dict.fromkeys(clue_ids))             # keep order, drop repeats
+    ids = list(dict.fromkeys(c.strip().upper() for c in clue_ids))  # "c3 " is C3; no repeats
     for clue_id in ids:
         if rules.clue(game, clue_id) is None:
             return error(f"unknown clue {clue_id!r}", notebook=sorted(found))

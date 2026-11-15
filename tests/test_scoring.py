@@ -78,10 +78,16 @@ def test_bad_accusations_are_errors_and_the_game_goes_on(ctx, who, clues, error)
     assert state.read(ctx.game)["status"] == "active"
 
 
+def test_clue_ids_are_normalised(ctx):
+    grant(ctx, "C3", "C4")
+    assert accuse(ctx, "tom", ["c3", " C4 "])["result"] == "win"
+
+
 def test_after_the_ending_every_tool_says_game_over(ctx):
     grant(ctx, "C3", "C4")
     accuse(ctx, "tom", ["C3", "C4"])
-    for name, args in (("look", {}), ("notebook", {}), ("hint", {}),
+    for name, args in (("look", {}), ("notebook", {}), ("hint", {}), ("go", {"place": "office"}),
+                       ("talk", {"character": "mira", "message": "hi"}), ("go", {}),
                        ("accuse", {"character": "tom", "motive": "x", "clue_ids": []})):
         assert REGISTRY.call(ctx, name, args, "gm") == {"ok": False, "error": "game over"}
 

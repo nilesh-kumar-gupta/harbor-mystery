@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-from harbor.commands import HELP, parse_command, render_ending
+from harbor.commands import HELP, parse_command, render, render_ending
 from harbor.engine.case_loader import CaseError, load_case
 from harbor.offline import offline_llms
 from harbor.session import Session, hosted_llms
@@ -107,8 +107,11 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
         result = session.turn(line)
         out(result.narration)
         if result.status == "ended":
+            accused = [r for name, _, r in result.tool_results if name == "accuse" and r.get("ok")]
             if result.end.get("result") == "timeout":
                 out(f"The day is over (timeout).\n{render_ending(result.end)}")
+            elif accused and hosted:   # the result screen comes from the engine, not the model
+                out(render("accuse", accused[-1]))
             break
     return 0
 
