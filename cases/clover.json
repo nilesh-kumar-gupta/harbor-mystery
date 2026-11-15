@@ -88,7 +88,7 @@
     },
     {
       "id": "C2",
-      "text": "Bert Quill signed a carbon delivery slip for one jar of black treacle at 20:10, after the genuine entry had been sealed. The empty delivery carton is under his bench.",
+      "text": "Bert Quill signed a carbon delivery slip for one jar of black treacle at 20:10. The empty delivery carton is under his bench.",
       "kind": "opportunity",
       "keywords": [
         "delivery slip",
@@ -101,10 +101,10 @@
     },
     {
       "id": "C3",
-      "text": "Bert Quill admits he substituted the jar to force a public inspection of Oswald Pike's bee feed. He says the prohibited stimulant in it mattered more to him than the prize. The substance was BX-4.",
+      "text": "Bert Quill admits he substituted the jar to force a public inspection of Oswald Pike's bee feed. He says the BX-4 in it mattered more to him than the prize.",
       "kind": "motive",
       "keywords": [
-        "stimulant",
+        "substituted the jar",
         "public inspection"
       ],
       "implicates": [
@@ -149,7 +149,7 @@
     },
     {
       "id": "C7",
-      "text": "Cleo saw Bert Quill stain his right thumb with purple sugar colour at 20:05. At 20:00 she had sealed the genuine entry with unmarked paper.",
+      "text": "I saw Bert Quill stain his right thumb with purple sugar colour at 20:05. At 20:00 I had sealed the genuine entry with unmarked paper.",
       "kind": "opportunity",
       "keywords": [
         "purple sugar",
@@ -175,7 +175,7 @@
     },
     {
       "id": "C9",
-      "text": "The gate register records Dax supervising a continuous hive demonstration from 20:00 to 20:30. Ada countersigned each five-minute attendance box; the hall was locked at 20:20.",
+      "text": "The gate register records Dax supervising a continuous hive demonstration from 20:00 to 20:30. Ada countersigned each five-minute attendance box; Cleo locked the hall with the spare key at 20:20.",
       "kind": "alibi",
       "keywords": [
         "gate register",
@@ -190,7 +190,12 @@
       "character_id": "ada",
       "clue_id": "C2",
       "min_trust": 0,
-      "unlock_topics": [],
+      "unlock_topics": [
+        "delivery",
+        "kitchen",
+        "bert",
+        "treacle"
+      ],
       "related_clues": [],
       "unlock_if_shown": []
     },
@@ -210,7 +215,13 @@
       "character_id": "cleo",
       "clue_id": "C7",
       "min_trust": 0,
-      "unlock_topics": [],
+      "unlock_topics": [
+        "thumb",
+        "strip",
+        "seal",
+        "tamper",
+        "closing"
+      ],
       "related_clues": [],
       "unlock_if_shown": []
     },
@@ -218,7 +229,13 @@
       "character_id": "cleo",
       "clue_id": "C5",
       "min_trust": 0,
-      "unlock_topics": [],
+      "unlock_topics": [
+        "thumb",
+        "strip",
+        "seal",
+        "tamper",
+        "closing"
+      ],
       "related_clues": [],
       "unlock_if_shown": []
     },
@@ -256,11 +273,35 @@
     {
       "character_id": "ada",
       "clue_id": "C9",
-      "min_trust": 0,
+      "min_trust": 1,
       "unlock_topics": [
         "register",
         "alibi",
         "dax"
+      ],
+      "related_clues": [],
+      "unlock_if_shown": [
+        "C8"
+      ]
+    },
+    {
+      "character_id": "bert",
+      "clue_id": "C2",
+      "min_trust": 0,
+      "unlock_topics": [],
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "cleo",
+      "clue_id": "C1",
+      "min_trust": 0,
+      "unlock_topics": [
+        "thumb",
+        "strip",
+        "seal",
+        "tamper",
+        "closing"
       ],
       "related_clues": [],
       "unlock_if_shown": []

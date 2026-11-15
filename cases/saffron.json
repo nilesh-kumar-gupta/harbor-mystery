@@ -55,7 +55,7 @@
       "id": "iman",
       "name": "Iman Rook",
       "role": "rest house manager",
-      "persona": "She regards every traveller as a temporary responsibility, but depends on tomorrow's sales to balance her books. She snaps her folding purse shut when irritated.",
+      "persona": "She regards every traveller as a temporary responsibility, but depends on tomorrow's sales to balance her books. She snaps her folding purse shut when irritated. She is fond of the young courier and reluctant to get him into trouble.",
       "speech_style": "Brusque practical questions, impatient fragments, reluctant affectionate terms for travellers.",
       "start_place": "court",
       "schedule": [],
@@ -85,11 +85,11 @@
   "clues": [
     {
       "id": "C1",
-      "text": "The metered draw was forty litres at 22:14. A resident's service token operated the outlet; the mechanism records no individual number. The manager's master key did not turn.",
+      "text": "The metered draw was forty litres at 22:14. A resident's service token operated the outlet; the mechanism records no individual number.",
       "kind": "opportunity",
       "keywords": [
         "metered draw",
-        "service token"
+        "individual number"
       ],
       "implicates": [],
       "found_at_place": "store"
@@ -112,7 +112,8 @@
       "text": "Nuri Bell received a veterinary telegram prescribing forty litres overnight for dehydrated confiscated tortoises. His transport allotment was exhausted, and he had been refused an emergency advance.",
       "kind": "motive",
       "keywords": [
-        "telegram",
+        "veterinary telegram",
+        "veterinary",
         "emergency advance"
       ],
       "implicates": [
@@ -166,7 +167,7 @@
     },
     {
       "id": "C8",
-      "text": "Iman saw Nuri Bell through the courtyard window at 22:14, carrying a coil. His wrist band was still riveted shut around his personal brass disc; hers lay in the locked cash drawer and Vera's was sealed there overnight too.",
+      "text": "At supper Nuri Bell showed me the riveted fastening on his wrist band, with his personal brass disc enclosed. At 22:14 he stopped at my lit courtyard window carrying a coil, and tapped that same fastening against the glass. My own disc lay in the locked cash drawer and Vera's was sealed there overnight too.",
       "kind": "opportunity",
       "keywords": [
         "wrist band",
@@ -179,14 +180,14 @@
     },
     {
       "id": "C9",
-      "text": "The night porter's signed watch sheet, left before his dawn departure, records Iman counting receipts behind the office grille continuously from 22:00 to 22:30. The only exit passes his chair.",
+      "text": "The office grille punch clock stamped Iman's captive cash-counting cuff every minute from 22:00 to 22:30, including 22:14. The cuff cannot pass through the grille; its release seal is unbroken.",
       "kind": "alibi",
       "keywords": [
-        "watch sheet",
-        "office grille"
+        "punch clock",
+        "cash-counting cuff"
       ],
       "implicates": [],
-      "found_at_place": "office"
+      "found_at_place": null
     },
     {
       "id": "C10",
@@ -198,6 +199,19 @@
       ],
       "implicates": [
         "nuri"
+      ],
+      "found_at_place": null
+    },
+    {
+      "id": "C11",
+      "text": "A buyer's note offers Iman Rook cash for forty litres off the books, enough to settle her overdue rent. The note asks her to leave the water beside the outer gate before dawn.",
+      "kind": "red_herring",
+      "keywords": [
+        "buyer's note",
+        "overdue rent"
+      ],
+      "implicates": [
+        "iman"
       ],
       "found_at_place": null
     }
@@ -283,6 +297,36 @@
       ],
       "related_clues": [],
       "unlock_if_shown": []
+    },
+    {
+      "character_id": "vera",
+      "clue_id": "C11",
+      "min_trust": 0,
+      "unlock_topics": [
+        "iman",
+        "buyer",
+        "sales",
+        "rent"
+      ],
+      "related_clues": [],
+      "unlock_if_shown": []
+    },
+    {
+      "character_id": "vera",
+      "clue_id": "C9",
+      "min_trust": 1,
+      "unlock_topics": [
+        "iman",
+        "alibi",
+        "clock",
+        "please"
+      ],
+      "related_clues": [
+        "C11"
+      ],
+      "unlock_if_shown": [
+        "C11"
+      ]
     }
   ],
   "pointers": [
