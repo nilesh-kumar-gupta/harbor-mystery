@@ -183,24 +183,30 @@ def named_tools(path):
     return full, bare
 
 
-# Backticked words the files use that are neither tools nor named in ADR 2.8: the
-# server name, the Agent tool argument, `/harbor-mystery` arguments (case ids,
-# `resume`, and new_game's Phase 2 `case` argument), a recall_knowledge result
-# field, and the subagents' one-word final messages.
+# Result fields the files name (ADR 2.8 result column, and recall_knowledge's
+# fields from rules.recall). Listed by hand, so a misspelt tool name cannot pass
+# as a field.
+RESULT_FIELDS = {"interaction_id", "attempt", "npc_agent", "referee_agent", "status", "reply",
+                 "new_clues", "fallback", "previous", "run_id", "help", "summary",
+                 "id", "name", "role", "persona", "speech_style", "player_message", "note",
+                 "calls_left", "clues", "pointers", "line", "guarded", "trust", "shown",
+                 "in_notebook", "text", "allowed_facts", "may_send_the_player_to",
+                 "player_said", "facts_the_player_stated"}
+# Other backticked words: the server name, the Agent tool argument,
+# `/harbor-mystery:harbor-mystery` arguments (case ids, `resume`, and new_game's
+# Phase 2 `case` argument), and the subagents' one-word final messages.
 OTHER_WORDS = {"harbor", "subagent_type", "resume", "case", "saltmere", "gaiety", "kestrel",
-               "in_notebook", "submitted", "failed", "done"}
+               "submitted", "failed", "done"}
 
 
 def non_tool_words():
     """Backticked words that are not tools: argument names and values, result fields."""
-    words = set(OTHER_WORDS)
+    words = RESULT_FIELDS | OTHER_WORDS
     for aud in ("gm", "npc", "referee"):
         for name in REGISTRY.names(aud):
             for key, prop in REGISTRY.get(name).input_schema["properties"].items():
                 words.add(key)
                 words.update(prop.get("enum", ()))
-    section = ADR.read_text(encoding="utf-8").split("### 2.8")[1].split("### 2.9")[0]
-    words |= set(re.findall(r"[a-z][a-z0-9_]*", section))
     return words - ALL_TOOLS
 
 
@@ -278,3 +284,15 @@ def test_subagent_prompts_assume_no_setting(path):
     _, body = split(path)
     found = {w for w in case_words() if re.search(rf"\b{re.escape(w)}\b", body, re.I)}
     assert not found, f"{path.name} names a setting: {found}"
+
+
+@pytest.mark.parametrize("path", (COMMAND, GAME_MASTER), ids=lambda p: p.name)
+def test_tools_called_free_are_exempt_from_the_action_cap(path):
+    source = (ROOT / "src" / "harbor" / "tools" / "registry.py").read_text(encoding="utf-8")
+    exempt = re.search(r'ctx\.turn_open and name not in \(([^)]*)\)', source).group(1)
+    lines = [l for l in path.read_text(encoding="utf-8").splitlines() if " free" in l]
+    assert lines
+    for line in lines:
+        claim = line.split(" free")[0]
+        free = set(re.findall(r"`([a-z_]+)`", claim.rsplit(". ", 1)[-1])) & ALL_TOOLS  # the sentence saying "free"
+        assert free and all(f'"{name}"' in exempt for name in free), (free, exempt)

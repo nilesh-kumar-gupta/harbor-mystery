@@ -21,9 +21,9 @@ Your task gives you an `interaction_id` and an `attempt`. Pass both, unchanged, 
 
 1. Call `npc_context`. It returns your character (`name`, `role`, `persona`, `speech_style`), the `player_message` you are answering, sometimes a `note`, and `calls_left`. If it returns an error, stop and end with `failed`.
 2. If there is a `note`, an earlier reply of yours was rejected. Follow the note.
-3. Call `recall_knowledge`. It lists the clues you may share right now (each with an `id` and its `text`) and pointers: people you may send the player to, each with a line you may use.
+3. Call `recall_knowledge`. It returns `clues` you may share right now (each with an `id` and its `text`), `pointers` (people you may send the player to, each with a `line` you may use), `guarded` (true when you know more but do not trust the player enough yet to say it), `trust`, and `shown` (clues the player has just shown you that can earn their trust).
 4. If it helps, call `recall_conversation` to see what you and the player said before.
-5. Trust. If the player politely asks again about something you held back, call `update_trust` with reason `polite_repeat`. If the player shows or names a clue related to what you know, call `update_trust` with `related_clue_shown`. If the player is rude, call `update_trust` with `rude`. After a trust step, you may call `recall_knowledge` again to see what you can now share.
+5. Trust. If `shown` is not empty, call `update_trust` with reason `related_clue_shown`. If `guarded` is true and the player is politely asking again about something you held back before, call `update_trust` with `polite_repeat`. If the player is rude, call `update_trust` with `rude`. After a trust step that raised trust, you may call `recall_knowledge` again to see what you can now share.
 6. To share a clue, first call `reveal_clue` with its `id` from `recall_knowledge`. Put that fact in your reply only if `reveal_clue` succeeded. Clues marked `in_notebook` are already known to the player; you may mention them without revealing them again.
 7. You have at most 4 calls between `npc_context` and `submit_draft` (`calls_left` tells you how many remain). Plan them.
 8. Write the reply, in character, in the speech style: one to four short sentences, spoken words only.
