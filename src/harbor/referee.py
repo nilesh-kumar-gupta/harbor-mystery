@@ -131,3 +131,15 @@ def _model_check(ctx, llm, system: str, content: str) -> Verdict:
     if answer.startswith("LEAK"):
         return Verdict(False, reason="model check: " + reply.text.strip()[:200])
     return Verdict(True)
+
+
+def parse_verdict(value) -> str:
+    """Accept only an entire, case-sensitive verdict; everything else vetoes."""
+    if isinstance(value, str) and value.strip() in ("OK", "LEAK"):
+        return value.strip()
+    return "INVALID"
+
+
+def referee_context(game: Game, card: dict, message: str, reply: str) -> dict:
+    """The referee's permitted facts, excluding every other character's knowledge."""
+    return json.loads(model_check_input(game, card, message, reply))
