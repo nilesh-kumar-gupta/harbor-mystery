@@ -229,8 +229,8 @@ def test_a_twenty_turn_game_is_fully_traced(make_session):
             assert len(begin) == 1 and len(finalize) == len(ref)
             assert all(by_id[r["parent_span_id"]] is gm for r in begin + finalize)
             attempt = lambda r: json.loads(r["attrs"])["game.attempt"]
-            drafts = [r for r in npc if "game.fallback" not in json.loads(r["attrs"])]
-            # every draft with words is judged; an empty draft goes straight to the fallback
+            drafts = npc
+            # Every attempt is judged, including empty drafts before retry or fallback.
             assert sorted(map(attempt, drafts)) == sorted(map(attempt, ref)), turn
             if any(json.loads(r["output"] or "{}").get("text") for r in drafts):
                 assert any(by_id[r["parent_span_id"]]["kind"] == "referee"
@@ -242,3 +242,29 @@ def test_a_twenty_turn_game_is_fully_traced(make_session):
         assert span["kind"] == "tool_call"
         if e["type"] != "run_started":
             assert span["trace_id"].endswith(f"-t{e['turn']:04d}"), e
+
+
+@pytest.mark.parametrize("name,audience", [("npc_context", "npc"), ("recall_knowledge", "npc"),
+                                          ("referee_context", "referee"), ("submit_verdict", "referee")])
+def test_refused_made_up_interactions_use_existing_parent(ctx, name, audience):
+    assert REGISTRY.call(ctx, "player_turn", {"line": "hello"}, "gm")["ok"]
+    result = REGISTRY.call(ctx, name, {"interaction_id": "made-up", "attempt": 1}, audience)
+    assert not result["ok"]
+    assert REGISTRY.call(ctx, "close_turn", {}, "gm")["ok"]
+    rows = spans(ctx.game.conn)
+    by_id = {r["span_id"]: r for r in rows}
+    refused = next(r for r in rows if r["name"] == name)
+    assert refused["parent_span_id"] == f"{ctx.tracer.trace_id}-gm"
+    assert all(r["parent_span_id"] is None or r["parent_span_id"] in by_id for r in rows)
+
+
+@pytest.mark.parametrize("text,outcome", [("", "no_draft"), ("Tom bought bolt cutters.", "code_leak")])
+def test_unchecked_attempts_have_no_verdict_source(ctx, text, outcome):
+    from harbor.agents.conversation import run
+    from harbor.llm.scripted import ScriptedLLM
+    out = run(ctx, ScriptedLLM([text] * 3), None, "mira", "hello")
+    assert out["ok"] and out["fallback"]
+    refs = [r for r in spans(ctx.game.conn) if r["kind"] == "referee"]
+    assert len(refs) == 3
+    assert all(json.loads(r["attrs"])["referee.verdict_source"] == "none" for r in refs)
+    assert all(json.loads(r["output"])["outcome"] == outcome for r in refs)

@@ -38,7 +38,7 @@ class Session:
     @classmethod
     def open(cls, run_id: str | None = None, llms: dict | None = None) -> "Session":
         """Open a persistent run through the same recovery tool as MCP."""
-        ctx = Context()
+        ctx = Context(require_turn=True)
         result = REGISTRY.call(ctx, "resume_game", {"run_id": run_id} if run_id else {}, "gm")
         if not result["ok"]:
             raise ValueError(result["error"])

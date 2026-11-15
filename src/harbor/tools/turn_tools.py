@@ -17,6 +17,8 @@ def player_turn(ctx, line):
 
 @REGISTRY.tool("close_turn", "gm", "Close the current player turn.", when_ended=True)
 def close_turn(ctx):
+    if not ctx.turn_open and state.is_over(ctx.game):
+        return {"ok": True, "status": "ended", "result": state.read(ctx.game)["result"]}
     if not ctx.turn_open:
         return error("no turn is open")
     out = end_turn(ctx)

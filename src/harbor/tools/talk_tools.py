@@ -79,7 +79,7 @@ def referee_context(ctx, interaction_id, attempt):
     with interaction.overlay(game, draft):
         verdict = referee.code_check(game, row["character_id"], row["player_message"], draft["draft"])
         virtual(ctx, interaction_id, attempt, "referee").attrs["referee.code_check"] = "pass" if verdict.ok else "leak"
-        return {"ok": True, **referee.referee_context(game, rules.resolve_character(game, row["character_id"]),
+        return {"ok": True, "code_check": "pass" if verdict.ok else "leak", **referee.referee_context(game, rules.resolve_character(game, row["character_id"]),
                                                      row["player_message"], draft["draft"])}
 
 
@@ -121,7 +121,7 @@ def finalize_talk(ctx, interaction_id):
     code = "leak" if outcome == "code_leak" else "pass" if draft["draft"] else "skipped: no draft"
     ref.attrs.update({"referee.code_check": code, "referee.verdict": draft["verdict"] or "missing",
                       "referee.model_error": model_error, "game.leaked_clues": json.loads(draft["leaked"] or "[]")})
-    ref.attrs.setdefault("referee.verdict_source", "mcp")
+    ref.attrs.setdefault("referee.verdict_source", "mcp" if draft["verdict"] else "none")
     ref.attrs["referee.model_check"] = ("skipped: code check failed" if code == "leak" else
         "error" if model_error else "pass" if draft["verdict"] == "OK" else "leak" if draft["verdict"] == "LEAK" else "invalid" if draft["verdict"] else "missing")
     status = "error" if model_error else "ok" if outcome == "accepted" else "rejected"

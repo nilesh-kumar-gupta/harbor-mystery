@@ -10,7 +10,6 @@ def run(ctx, llm, ids):
     if not result["ok"]:
         return
     parent = f"{ids['interaction_id']}-a{ids['attempt']}-ref"
-    span = ctx.tracer._virtual[parent]
     answer, reason = "OK", ""
     try:
         if llm is not None:
@@ -21,4 +20,5 @@ def run(ctx, llm, ids):
     except Exception as exc:
         answer, reason = None, f"model_error: {type(exc).__name__}"
     REGISTRY.call(ctx, "submit_verdict", {**ids, "verdict": answer, "reason": reason}, "referee")
-    span.attrs["referee.verdict_source"] = "offline"
+    from harbor.tools.talk_tools import virtual
+    virtual(ctx, ids["interaction_id"], ids["attempt"], "referee").attrs["referee.verdict_source"] = "offline"

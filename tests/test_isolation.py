@@ -280,3 +280,22 @@ def test_the_referee_cannot_write(ctx):
     assert state.found_clue_ids(ctx.game) == set()
     assert [r["text"] for r in state.conversation(ctx.game, "mira")] == ["hello", CHARS["mira"].fallback_line]
     assert all(r["status"] == "error" for r in spans_of(ctx, "referee"))
+
+
+def test_writing_code_check_is_rolled_back_by_overlay(ctx, monkeypatch):
+    from conftest import open_npc, active_ids
+    open_npc(ctx, "mira")
+    ids = active_ids(ctx)
+    assert REGISTRY.call(ctx, "submit_draft", {**ids, "text": "Morning."}, "npc")["ok"]
+    original = referee.code_check
+    writes = []
+    def writing_check(game, *args):
+        state.advance_clock(game, 60)
+        writes.append(True)
+        return original(game, *args)
+    monkeypatch.setattr(referee, "code_check", writing_check)
+    before = events.state_hash(ctx.game.conn, ctx.game.run_id)
+    result = REGISTRY.call(ctx, "referee_context", ids, "referee")
+    assert result["ok"] and result["code_check"] == "pass" and writes == [True]
+    assert events.state_hash(ctx.game.conn, ctx.game.run_id) == before
+    assert not ctx.game.conn.in_transaction

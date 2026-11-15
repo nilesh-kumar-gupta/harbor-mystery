@@ -29,6 +29,7 @@ class Context:
     tracer: Tracer | None = None
     counts: dict = field(default_factory=dict)
     limited: set = field(default_factory=set)
+    require_turn: bool = False
     turn_open: bool = False
     trace_warning_seen: int = 0
 
@@ -102,7 +103,7 @@ class Registry:
         if tool and tool.session:
             if tool.audience != audience:
                 return error(f"unknown tool {name!r}")
-            problem = _check_arguments(tool.input_schema, arguments)
+            problem = check_arguments(tool.input_schema, arguments)
             if problem:
                 return error(problem)
             try:
@@ -122,7 +123,7 @@ class Registry:
         previous = None
         valid_turn = (name == "player_turn" and audience == "gm" and st
                       and not state.is_over(game)
-                      and _check_arguments(self.get("player_turn").input_schema, arguments) is None)
+                      and check_arguments(self.get("player_turn").input_schema, arguments) is None)
         if valid_turn and ctx.turn_open:
             previous = self.call(ctx, "close_turn", {}, "gm")
             if not previous.get("ok"):
@@ -139,8 +140,10 @@ class Registry:
         iid, attempt = args.get("interaction_id"), args.get("attempt")
         if iid and attempt:
             attrs.update({"game.interaction_id": iid, "game.attempt": attempt})
-            parent_id = f"{iid}-a{attempt}-{'npc' if audience == 'npc' else 'ref'}"
-        elif ctx.turn_open or name == "player_turn":
+            candidate = f"{iid}-a{attempt}-{'npc' if audience == 'npc' else 'ref'}"
+            if candidate in ctx.tracer._virtual:
+                parent_id = candidate
+        if parent_id is None and (ctx.turn_open or name == "player_turn"):
             parent_id = f"{ctx.tracer.trace_id}-gm"
         with ctx.tracer.span("tool_call", str(name), input=arguments, attrs=attrs,
                              parent_id=parent_id) as span:
@@ -159,6 +162,9 @@ class Registry:
                 if result is None or not result.get("ok"):  # None: interrupted, re-raising
                     game.conn.execute(f"ROLLBACK TO {savepoint}")
                 game.conn.execute(f"RELEASE {savepoint}")
+            if iid and attempt and candidate in ctx.tracer._virtual:
+                span.parent_span_id = candidate
+                span.trace_id = ctx.tracer._virtual[candidate].trace_id
             if name == "close_turn" and result.get("ok"):
                 sid = f"{ctx.tracer.trace_id}-gm"
                 if sid in ctx.tracer._virtual:
@@ -186,6 +192,9 @@ class Registry:
         current = interaction.opened(game)
         if audience == "gm" and current and name not in ("finalize_talk", "notebook"):
             return error("finish the conversation first", interaction_id=current["interaction_id"])
+        if (audience == "gm" and ctx.require_turn and not ctx.turn_open
+                and name not in ("player_turn", "close_turn", "finalize_talk", "notebook")):
+            return error("start a player turn first")
         if audience == "gm" and ctx.turn_open and name not in ("player_turn", "close_turn", "finalize_talk", "notebook"):
             key = ("gm", state.read(game)["turn"])
             ctx.counts[key] = ctx.counts.get(key, 0) + 1
@@ -207,7 +216,7 @@ class Registry:
                     return error("NPC tool limit")
         if tool is None or tool.audience != audience:
             return error(f"unknown tool {name!r}", tools=self.names(audience))
-        problem = _check_arguments(tool.input_schema, arguments)
+        problem = check_arguments(tool.input_schema, arguments)
         if problem:
             return error(problem)
         game = ctx.game
@@ -223,7 +232,7 @@ class Registry:
         return tool.func(ctx, **(arguments or {}))
 
 
-def _check_arguments(schema: dict, arguments: Any) -> str | None:
+def check_arguments(schema: dict, arguments: Any) -> str | None:
     if arguments is None:
         arguments = {}
     if not isinstance(arguments, dict):

@@ -10,6 +10,7 @@ def rpc_error(ident, code, message):
 
 
 def handle(ctx, request):
+    ctx.require_turn = True
     if not isinstance(request, dict):
         return rpc_error(None, -32600, "Invalid Request")
     ident = request.get("id")

@@ -47,6 +47,8 @@ def tool(ctx, name, **arguments):
 
 def talk_call(ctx, arguments, audience="gm"):
     from harbor.agents.conversation import run
+    if audience != "gm":
+        return {"ok": False, "error": "talk requires gm audience"}
     return run(ctx, getattr(ctx, "test_npc_llm", None),
                getattr(ctx, "test_referee_llm", None), **arguments)
 

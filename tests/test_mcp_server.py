@@ -73,3 +73,15 @@ def test_protocol_errors_continue(server):
     proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
     proc.stdin.flush()
     assert send("ping")["result"] == {}
+
+
+def test_mcp_requires_player_turn(server):
+    _, send, _ = server
+    assert tool(send, "new_game")["ok"]
+    for _ in range(6):
+        assert tool(send, "look")["error"] == "start a player turn first"
+    assert tool(send, "game_status")["ok"]
+    assert tool(send, "player_turn", line="look")["ok"]
+    for _ in range(3):
+        assert tool(send, "look")["ok"]
+    assert tool(send, "look")["error"] == "game master tool limit"

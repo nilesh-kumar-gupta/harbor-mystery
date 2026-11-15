@@ -84,3 +84,37 @@ def test_resume_does_not_reset_action_cap(persistent):
     assert call(ctx, "look")["error"] == "game master tool limit"
     assert not old.tracer._virtual
     old.conn.close()
+
+
+@pytest.mark.parametrize("case_id", ["saltmere", "gaiety", "kestrel"])
+def test_all_shipped_cases_start(tmp_path, monkeypatch, case_id):
+    monkeypatch.setenv("HARBOR_HOME", str(tmp_path))
+    ctx = Context(require_turn=True)
+    assert call(ctx, "new_game", case=case_id)["ok"]
+    assert call(ctx, "game_status")["case_id"] == case_id
+    assert ctx.game.conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1
+    ctx.game.conn.close()
+
+
+def test_required_turn_refuses_actions_but_preserves_session_exemptions(persistent):
+    ctx = persistent
+    ctx.require_turn = True
+    before = state.read(ctx.game)["clock"]
+    for _ in range(6):
+        assert call(ctx, "look")["error"] == "start a player turn first"
+    assert state.read(ctx.game)["clock"] == before
+    assert call(ctx, "game_status")["ok"]
+    assert call(ctx, "player_turn", line="hello")["ok"]
+    for _ in range(3):
+        assert call(ctx, "look")["ok"]
+    assert call(ctx, "look")["error"] == "game master tool limit"
+    assert call(ctx, "close_turn")["ok"]
+    assert call(ctx, "look")["error"] == "start a player turn first"
+
+
+def test_session_open_requires_turn(persistent):
+    from harbor.session import Session
+    session = Session.open(persistent.game.run_id)
+    assert session.ctx.require_turn
+    assert not call(session.ctx, "look")["ok"]
+    session.ctx.game.conn.close()

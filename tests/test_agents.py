@@ -385,3 +385,55 @@ def test_a_plain_second_ask_raises_trust_in_offline_play(make_session):
     second = session.turn("talk ysolde: Who bought bolt cutters?").tool_results[0][2]
     assert second["new_clues"] == ["C5"]
     assert state.trust_of(session.ctx.game, "ysolde") == 1
+
+
+@pytest.mark.parametrize("name,args", [("begin_talk", {"character": "mira", "message": "hi"}),
+                                       ("close_turn", {})])
+def test_offline_gm_refuses_unoffered_tools(ctx, name, args):
+    from harbor.engine import interaction
+    llm = ScriptedLLM([{"tool_calls": [(name, args)]},
+                       {"tool_calls": [("look", {})]}, "Done."])
+    result = GameMaster(llm).run_turn(ctx, "hello")
+    assert not result.tool_results[0][2]["ok"]
+    assert result.tool_results[1][2]["ok"]
+    assert interaction.opened(ctx.game) is None
+    assert state.read(ctx.game)["turn"] == 2
+    assert state.read(ctx.game)["clock"] == 365
+
+
+def test_turn_after_ending_reports_ended(ctx):
+    REGISTRY.call(ctx, "accuse", {"character": "tom", "motive": "test", "clue_ids": []}, "gm")
+    llm = ScriptedLLM([])
+    assert GameMaster(llm).run_turn(ctx, "look").status == "ended"
+    assert not llm.calls
+    assert REGISTRY.call(ctx, "close_turn", {}, "gm")["status"] == "ended"
+
+
+def test_conversation_finalizes_after_unexpected_handoff_failure(ctx, monkeypatch):
+    from harbor.agents import checker, conversation
+    from harbor.engine import interaction
+    def broken(*args):
+        raise RuntimeError("handoff failed")
+    monkeypatch.setattr(checker, "run", broken)
+    with pytest.raises(RuntimeError, match="handoff failed"):
+        conversation.run(ctx, ScriptedLLM(["Morning."]), None, "mira", "hello")
+    assert interaction.opened(ctx.game) is None
+    assert state.read(ctx.game)["clock"] == 370
+    assert not ctx.game.conn.in_transaction and ctx.game.tool_depth == 0
+
+
+def test_update_trust_wrong_phase_has_no_error_dict_in_trust(ctx):
+    from conftest import open_npc
+    open_npc(ctx, "mira")
+    ids = active_ids(ctx)
+    assert REGISTRY.call(ctx, "submit_draft", {**ids, "text": "Morning."}, "npc")["ok"]
+    # Exercise the tool's own error path; registry normally rejects this first.
+    from harbor.tools.npc_tools import update_trust
+    out = update_trust(ctx, **ids, reason="polite_repeat")
+    assert not out["ok"] and "trust" not in out
+
+
+def test_talk_fixture_honors_audience(ctx):
+    before = snapshot(ctx)
+    assert not talk_call(ctx, {"character": "mira", "message": "hi"}, "npc")["ok"]
+    assert snapshot(ctx) == before
