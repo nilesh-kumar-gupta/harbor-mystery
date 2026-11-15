@@ -145,7 +145,8 @@ class Registry:
         if started and not tool.when_ended:
             if state.is_over(game):
                 return error("game over")
-            if rules.past_end(game):
+            if rules.past_end(game) and audience != "npc":
+                # NPC tools only run inside a talk that started before the end of the day
                 return error("the day is over")
         return tool.func(ctx, **(arguments or {}))
 

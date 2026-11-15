@@ -65,9 +65,11 @@ def test_a_response_becomes_a_reply_with_usage():
     assert (reply.input_tokens, reply.output_tokens) == (11, 7) and len(reply.raw) == 2
 
 
-def test_a_refusal_ends_the_agent_with_no_text():
-    response = NS(model="m", stop_reason="refusal", usage=None,
-                  content=[Block(type="text", text="partial")])
+@pytest.mark.parametrize("stop", ["refusal", "max_tokens"])
+def test_a_refusal_or_cut_off_reply_ends_the_agent_with_nothing(stop):
+    response = NS(model="m", stop_reason=stop, usage=None,
+                  content=[Block(type="text", text="partial"),
+                           Block(type="tool_use", id="t", name="go", input={"pla": 1})])
     reply = from_anthropic(response, "m")
     assert reply.text == "" and reply.tool_calls == []
 

@@ -93,6 +93,8 @@ def from_anthropic(response, model: str) -> LLMReply:
         text="".join(texts), tool_calls=calls, model=getattr(response, "model", model),
         input_tokens=getattr(usage, "input_tokens", 0) or 0,
         output_tokens=getattr(usage, "output_tokens", 0) or 0, raw=raw)
-    if getattr(response, "stop_reason", None) == "refusal":
-        reply.text, reply.tool_calls = "", []   # a refusal ends the agent; talk uses the fallback
+    if getattr(response, "stop_reason", None) in ("refusal", "max_tokens"):
+        # a refusal or a cut-off reply ends the agent (a truncated tool call is never run);
+        # talk then uses the fallback line
+        reply.text, reply.tool_calls = "", []
     return reply

@@ -100,6 +100,9 @@ def talk(ctx: Context, character: str, message: str) -> dict:
     clock = state.advance_clock(game, TALK_MINUTES)  # first: finds carry the end time
     state.start_talk(game, who["id"])          # the active-character rule: set here only
     state.say(game, who["id"], "player", message)
+    shown = sorted(rules.shown_clues(game, message))
+    if shown:
+        state.record_shown(game, who["id"], shown)
     reply, fallback = _npc_reply(ctx, who, message)
     state.say(game, who["id"], "npc", reply)
     out = {"ok": True, "character": who["name"], "reply": reply,

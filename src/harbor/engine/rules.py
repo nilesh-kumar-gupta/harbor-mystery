@@ -85,6 +85,8 @@ def past_end(game: Game) -> bool:
 
 MAX_TRUST = 2
 TRUST_REASONS = ("polite_repeat", "related_clue_shown", "rude")
+COURTESY = ("please", "thank", "kindly", "sorry", "appreciate", "would you", "could you",
+            "if you don't mind", "pardon")
 
 
 def _list(text: str) -> list[str]:
@@ -112,10 +114,14 @@ def _trust_ok(game: Game, row: sqlite3.Row, character_id: str) -> bool:
     if state.trust_of(game, character_id) >= row["min_trust"]:
         return True
     needed = set(_list(row["unlock_if_shown"]))
-    if not needed:
-        return False
-    said = " ".join(state.player_lines(game, character_id))  # anything shown today counts
-    return needed <= shown_clues(game, said)
+    return bool(needed) and needed <= shown_to(game, character_id)
+
+
+def shown_to(game: Game, character_id: str, since_last: str | None = None) -> set[str]:
+    """Clues the player has shown this character today (or in this conversation),
+    as recorded when each line was said, not re-read against today's notebook."""
+    return {c for e in state.events_of(game, "clues_shown", since_last=since_last)
+            if e["character"] == character_id for c in e["clue_ids"]}
 
 
 def _topic_ok(game: Game, row: sqlite3.Row, message: str) -> bool:
@@ -134,7 +140,7 @@ def _trust_clues_shown(game: Game, character_id: str) -> list[str]:
     related = {c for row in knowledge(game, character_id) for c in _list(row["related_clues"])}
     used = {e["clue_id"] for e in state.events_of(game, "trust_changed")
             if e["character"] == character_id and e["reason"] == "related_clue_shown"}
-    shown = shown_clues(game, _current_message(game, character_id))
+    shown = shown_to(game, character_id, since_last="talk_started")
     return sorted((shown & related) - used)
 
 
@@ -204,6 +210,8 @@ def trust_step(game: Game, character_id: str, reason: str) -> tuple[int | None, 
     if reason == "polite_repeat":
         if len(state.player_lines(game, character_id)) < 2:
             return None, None, "the player has not asked before"
+        if not matches(_current_message(game, character_id), COURTESY):
+            return None, None, "the player did not ask politely"
         if any(e["reason"] == "polite_repeat" for e in earlier):
             return None, None, "a polite repeat has already been counted"
         return level + 1, None, ""

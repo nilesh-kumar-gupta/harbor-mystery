@@ -184,6 +184,11 @@ def say(game: Game, character_id: str, speaker: str, text: str) -> None:
                   {"character": character_id, "speaker": speaker, "text": text})
 
 
+def record_shown(game: Game, character_id: str, clue_ids: list[str]) -> None:
+    """Note which notebook clues the player showed this character, as they said it."""
+    events.record(game, "clues_shown", {"character": character_id, "clue_ids": clue_ids})
+
+
 def change_trust(game: Game, character_id: str, to: int, reason: str,
                  clue_id: str | None = None) -> None:
     events.record(game, "trust_changed", {

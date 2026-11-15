@@ -47,8 +47,8 @@ class GameMaster:
                 MAX_TOOL_CALLS, attrs={"game.turn": turn},
             )
             narration = out.text.strip()
-            if out.capped:
-                narration = CAP_LINE
+            if out.capped:  # the calls that ran still changed the game: show them
+                narration = "\n".join([CAP_LINE] + [render(n, r) for n, _, r in out.tool_results])
             elif not narration:  # no words from the model: show the tool results plainly
                 narration = "\n".join(render(n, r) for n, _, r in out.tool_results)
             end = REGISTRY.call(ctx, "end_turn", {}, "engine")

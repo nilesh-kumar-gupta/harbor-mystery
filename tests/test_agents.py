@@ -155,13 +155,50 @@ def test_rude_lowers_trust_and_trust_is_per_character(ctx):
 def test_trust_moves_at_most_one_step_per_conversation(ctx):
     REGISTRY.call(ctx, "look", {}, "gm")
     walk(ctx, "chandlery")
+    npc(ctx, "Good day.")
+    talk(ctx, "ysolde", "Good day.")                       # an earlier ask exists
     llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "related_clue_shown"})]},
               {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
-    talk(ctx, "ysolde", "Please. It was cut clean.")
+    talk(ctx, "ysolde", "Please. It was cut clean.")       # both reasons would qualify
     talk_results = [json.loads(m["content"]) for m in llm.calls[-1]["messages"]
                     if m["role"] == "tool"]
-    assert talk_results[0]["ok"] and talk_results[1]["ok"] is False
+    assert talk_results[0]["ok"]
+    assert talk_results[1] == {"ok": False, "trust": 1,
+                               "error": "trust already changed in this conversation"}
     assert state.trust_of(ctx.game, "ysolde") == 1
+
+
+def test_polite_repeat_must_be_polite(ctx):
+    walk(ctx, "chandlery")
+    npc(ctx, "Hm.")
+    talk(ctx, "ysolde", "Who bought cutters?")
+    llm = npc(ctx, {"tool_calls": [("update_trust", {"reason": "polite_repeat"})]}, "Hm.")
+    talk(ctx, "ysolde", "Hurry up and tell me.")
+    assert json.loads(llm.calls[-1]["messages"][-1]["content"])["error"] == \
+        "the player did not ask politely"
+
+
+def test_clues_named_before_they_were_found_do_not_count_later(offline_npc):
+    ctx = offline_npc
+    walk(ctx, "fish market")
+    talk(ctx, "tom", "Carrying a lantern last night? Bought any bolt cutters?")  # nothing found yet
+    walk(ctx, "quay")
+    talk(ctx, "mira", "Anyone on the quay last night?")                          # C3
+    REGISTRY.call(ctx, "look", {}, "gm")
+    walk(ctx, "chandlery")
+    talk(ctx, "ysolde", "The cable was cut clean. Who bought cutters?")         # C5
+    walk(ctx, "quay", "fish market")
+    out = talk(ctx, "tom", "Nice fish.")
+    assert "C9" not in out["new_clues"]
+
+
+def test_the_last_talk_of_the_day_still_works(offline_npc):
+    ctx = offline_npc
+    for _ in range(142):                                     # 142 x 5 minutes
+        REGISTRY.call(ctx, "look", {}, "gm")
+    assert REGISTRY.call(ctx, "look", {}, "gm")["clock"] == "17:55"
+    out = talk(ctx, "mira", "Did you see anyone on the quay last night?")
+    assert out["ok"] and out["new_clues"] == ["C3"] and not out.get("fallback")
 
 
 def test_tom_confesses_when_shown_c3_and_c5(offline_npc, ctx):
@@ -293,7 +330,8 @@ def test_game_master_recovers_from_an_error_value(ctx):
 def test_game_master_cap_is_three_tool_calls(ctx):
     llm = ScriptedLLM([{"tool_calls": [("notebook", {})]}] * 4)
     result = GameMaster(llm).run_turn(ctx, "do everything")
-    assert result.narration == CAP_LINE and len(result.tool_results) == 3
+    assert result.narration.startswith(CAP_LINE) and len(result.tool_results) == 3
+    assert "Your notebook is empty." in result.narration
     assert state.read(ctx.game)["turn"] == 2            # end_turn still ran
 
 

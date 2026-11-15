@@ -77,7 +77,7 @@ def _apply(conn, run_id: str, turn: int, type: str, p: dict) -> None:
             _set(conn, run_id, nudge_clue=None)
     elif type == "game_ended":
         _set(conn, run_id, status="ended", result=p["result"])
-    elif type in ("clue_confirmed", "hint_used"):
+    elif type in ("clue_confirmed", "hint_used", "clues_shown"):
         pass  # logged for the referee and for analysis; no state of their own
     else:
         raise ValueError(f"unknown event type {type!r}")
