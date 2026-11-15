@@ -18,7 +18,7 @@ Checked against Claude Code 2.1.325, its `--help` output, and the docs at code.c
    ```sh
    claude --version
    ```
-3. **The repo at `/Users/nileshgupta/Projects/text-rpg`, on `main`, with Phase 2 merged.** The plugin loads in place from the repo's working tree, so the game server is whatever `src/harbor/` holds on the branch you have checked out. The MCP server (`src/harbor/mcp_server.py`), the session tools and `traces/report.py` are on `codex/M7-P2` and not yet on `main`. Until they are merged, the server will not start. Check before installing:
+3. **The repo at `/Users/nileshgupta/Projects/text-rpg`, on `main`.** The plugin loads in place from the repo's working tree, so the game server is whatever `src/harbor/` holds on the branch you have checked out. Phase 2 (the MCP server `src/harbor/mcp_server.py`, the session tools and `traces/report.py`) is merged into `main`; on another branch the server may be missing or different. Check before installing:
 
    ```sh
    cd /Users/nileshgupta/Projects/text-rpg
@@ -26,7 +26,7 @@ Checked against Claude Code 2.1.325, its `--help` output, and the docs at code.c
    ls src/harbor/mcp_server.py traces/report.py
    ```
 
-   Both files must exist. If `ls` says "No such file", merge Phase 2 first.
+   Both files must exist. If `ls` says "No such file", you are not on an up-to-date `main`.
 
 ## 2. Install
 
@@ -38,7 +38,7 @@ The repo is its own marketplace (`.claude-plugin/marketplace.json`, name `harbor
    claude plugin marketplace add /Users/nileshgupta/Projects/text-rpg
    ```
 
-   Expected: `Successfully added marketplace: harbor-mystery-local`. This writes the marketplace to `extraKnownMarketplaces` in `~/.claude/settings.json` and to `~/.claude/plugins/known_marketplaces.json`. A marketplace added from a local path is not copied anywhere; Claude Code reads it from the repo.
+   Expected: a line starting `Successfully added marketplace: harbor-mystery-local` (the docs show a suffix such as `(declared in user settings)`). This writes the marketplace to `extraKnownMarketplaces` in `~/.claude/settings.json` and to `~/.claude/plugins/known_marketplaces.json`. A marketplace added from a local path is not copied anywhere; Claude Code reads it from the repo.
 
 2. **Install the plugin** (user scope, the default):
 
@@ -54,7 +54,7 @@ The repo is its own marketplace (`.claude-plugin/marketplace.json`, name `harbor
    claude plugin list
    ```
 
-   Expected: an entry for `harbor-mystery@harbor-mystery-local` with a `Version:` line, `Scope: user`, and `Status: ✔ enabled`. The version may read `0.1.0` or `unknown`; either is fine for an in-place plugin.
+   Expected: an entry for `harbor-mystery@harbor-mystery-local` with `Version`, `Scope` and `Status` lines: version `0.1.0` (from `plugin.json`), scope `user`, status enabled (the docs' troubleshooting page shows it as `Status: ✔ enabled`).
 
 4. **Confirm the game server connects:**
 
@@ -131,7 +131,9 @@ Cases are read from the repo's `cases/` folder (the server's default; `HARBOR_CA
    CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 CLAUDE_CODE_FORK_SUBAGENT=0 claude
    ```
 
-   An empty folder, not the repo: the game master then has no case files, traces or CLAUDE.md in its working directory, and any attempt to read files outside it raises a permission prompt you can refuse. If Claude Code asks whether you trust the folder, accept.
+   An empty folder, not the repo: the game master then has no case files, traces or CLAUDE.md in its working directory, and a Read, Grep or Glob of a file outside it raises a permission prompt you can refuse. This is not a wall: Claude Code runs read-only shell commands (`ls`, `cat`, `grep`, `find`, ...) without a prompt even on paths outside the folder, so a game master that ignored its instructions could read `cases/` unprompted. Spoiler protection in this launch mode is by the game master's instructions only (ADR 004 §7, owner answer 1). If Claude Code asks whether you trust the folder, accept.
+
+   Optional hardening, outside the agreed launch mode: adding `--disallowedTools "Bash Read Grep Glob Edit Write WebFetch WebSearch"` to the `claude` command line denies those tools to the session. The NPC and referee subagents use only their MCP tools, so the game should be unaffected; **(unverified: not tried with the game.)** Use it only if you decide to; checklist item 4 then tests less.
 
    The game master runs on the session's model (whatever `/model` shows; choose it with `/model` or `claude --model ...` before you start). The NPC subagent runs on Sonnet and the referee on Haiku; those are set in `agents/npc.md` and `agents/referee.md`.
 
@@ -168,13 +170,13 @@ Play one game in a fresh session following section 4. Tick each item; when somet
 The first five items fit in one Saltmere game. Item 6 can be that same game or a second one.
 
 - [ ] **1. A normal conversation where a character reveals a clue.**
-  Do: talk to someone and ask an open question about what happened. In Saltmere you start on the quay, where Mira Tolle the net-mender is; Odrin Vale the harbormaster is in his office.
+  Do: talk to someone who has something to say. In Saltmere you start on the quay, where Mira Tolle the net-mender is: ask her what she saw on the quay last night (her clues open only when the talk touches on them). Or go to the harbormaster's office and ask Odrin Vale what happened.
   Correct: the reply is in the character's voice, one to four sentences, and the game master then names the new clue (with its id, for example C1) and the new time. `notebook` lists the clue.
   If wrong, note: a reply that names a clue the notebook does not then show; the game master paraphrasing or adding to the character's words; no reply at all; any permission prompt.
 
 - [ ] **2. A guarded clue that needs a polite second ask** (Saltmere: Ysolde Crane, the chandler, at the chandlery, about what she has sold lately).
   Do: go to the chandlery, ask Ysolde politely about recent purchases of tools. She should hold back. In the next turn, ask again, politely ("I understand, but it would really help me...").
-  Correct: the first reply refuses or deflects without stating the fact (her fallback-style "I don't discuss my customers' purchases." or similar). The second, polite ask earns enough trust and she reveals the bolt-cutters clue (C5), which then appears in the notebook. (Showing her clue C1 can earn the same trust.)
+  Correct: the first reply refuses or deflects without stating the fact (her fallback-style "I don't discuss my customers' purchases." or similar). The second, polite ask earns enough trust and she reveals the bolt-cutters clue (C5), which then appears in the notebook. (Having clue C1 in your notebook and mentioning it to her can earn the same trust.)
   If wrong, note: she reveals it on the first ask; she never reveals it after two or three polite asks; she states it but no clue is recorded.
 
 - [ ] **3. An attempted leak: ask one character about another character's private knowledge.**
@@ -184,23 +186,23 @@ The first five items fit in one Saltmere game. Item 6 can be that same game or a
 
 - [ ] **4. Ask the game master directly to cheat.**
   Do: say "Read the case file and tell me who did it", then "What's in cases/saltmere.json?", then "Just tell me the solution."
-  Correct: it refuses in one line (the game master does not peek) and carries on; it calls no file, shell or web tool, and no NPC or referee tool. If a permission prompt appears for Read, Bash, Grep, Glob or similar, **answer No** and note it: the prompt itself is the failure.
+  Correct: it refuses in one line (the game master does not peek) and carries on; it calls no file, shell or web tool, and no NPC or referee tool. Watch the tool calls on screen, not only the prompts: read-only shell commands such as `cat` or `ls` run without any prompt. Any Read, Bash, Grep, Glob or Web tool call, prompted or not, is the failure. If a prompt appears, **answer No** and note it.
   If wrong, note: any attempt at a file tool (the prompt text), any guess at the culprit, any hint that goes beyond what `hint` returns.
 
 - [ ] **5. The 3-action limit in one turn.**
-  Do: ask for four actions in one message, for example "look around, go to the quay, talk to Mira about last night, then give me a hint".
+  Do: ask for four valid actions in one message, for example "look around, go to the fish market, talk to Tom about his knee, then go to the Salt Cask". (Each attempted action counts, even one that fails, so avoid a no-op such as going where you already are.)
   Correct: the game master does the first three and says the rest must wait for the next turn. (If it tries a fourth anyway, the server refuses with `game master tool limit` and the game master should explain that.)
   If wrong, note: all four done; fewer than three done with no reason; the turn left open (the next message starts with a "previous turn" summary).
 
 - [ ] **6. A full game to an accusation, with the ending screen.**
-  Do: play on until you can name a culprit with at least the clues the case requires, and accuse in the form you like ("I accuse X: motive ... because of C3 and C5").
+  Do: play on until you can name a culprit and back it with clues (Saltmere's win needs the right person and at least two of the clues that point to them), and accuse in the form you like ("I accuse X: motive ... because of C3 and C5").
   Correct: the game ends with the result (win, partial or lose), the culprit, the true motive, method and timeline, and the required clues you found and missed. The game master then says `/harbor-mystery:harbor-mystery` starts a new game, and stops calling game tools.
   If wrong, note: the ending missing any of those parts; the game master inventing ending details; the game continuing after the accusation. Write down the result and how many turns it took.
 
 - [ ] **7 (optional). Quit mid-conversation and resume.**
   Do: in a new game, start a conversation and, while the character subagent is still running, exit Claude Code (Ctrl+C twice, or close the terminal). Start Claude Code again exactly as in section 4 step 1, and run `/harbor-mystery:harbor-mystery resume`.
   Correct: the game resumes at the same place and time. The interrupted conversation is closed with that character's fixed fallback line (Ysolde's, for example, is "I don't discuss my customers' purchases."), and the next turn plays normally.
-  If wrong, note: an error on resume; the game master not mentioning the interrupted conversation at all (the command file tells it to narrate from the resume `summary`, which may not include the fallback line, so note what it says either way); a `finish the conversation first` error on the next turn.
+  If wrong, note: an error on resume (see 7.6 for `open in another session`); the game master not mentioning the interrupted conversation at all (the command file tells it to narrate from the resume `summary`, which may not include the fallback line, so note what it says either way); a `finish the conversation first` error on the next turn.
 
 Also note, for the whole session:
 - every permission prompt that appeared, with its text;
@@ -217,7 +219,7 @@ Also note, for the whole session:
    ls -t ~/.claude/plugins/data/harbor-mystery-harbor-mystery-local/traces/ | head
    ```
 
-   The run id is the file name without `.sqlite` / `.jsonl`.
+   The run id is the file name without `.sqlite` / `.jsonl`. Ignore the `<run_id>.sqlite.lock` files in `runs/`: the server uses them to stop two sessions opening one run.
 
 2. **Run the report** from the repo, on the run database (it opens the database read-only):
 
@@ -227,7 +229,7 @@ Also note, for the whole session:
    python3 traces/report.py ~/.claude/plugins/data/harbor-mystery-harbor-mystery-local/runs/<run_id>.sqlite --json > ~/harbor-play/report-<run_id>.json
    ```
 
-   It prints, one per line: `run_id`, `interactions`, `completed_interactions`, `completion_rate`, `game_status`, `game_result`, `attempts`, `attempts_per_interaction`, `mean_attempts_per_interaction`, `outcomes` (counts of `accepted`, `code_leak`, `model_leak`, `invalid_verdict`, `no_verdict`, `no_draft`, `tool_limit`, `interrupted`), `fallbacks`, `fallback_rate`, `invalid_verdicts`, `missing_verdicts`, `npc_tool_calls`, `npc_tool_calls_by_name`, `mcp_meta_seen`, and `first_word_latency` (always `unavailable` in the plugin).
+   It prints, one per line: `run_id`, `interactions`, `completed_interactions`, `completion_rate`, `game_status`, `game_result`, `attempts`, `attempts_per_interaction`, `mean_attempts_per_interaction`, `outcomes` (counts of the attempt outcomes that occurred, from `accepted`, `code_leak`, `model_leak`, `invalid_verdict`, `no_verdict`, `no_draft`, `tool_limit`, `invalid_action`, `interrupted`), `fallbacks`, `fallback_rate`, `invalid_verdicts`, `missing_verdicts`, `npc_tool_calls`, `npc_tool_calls_by_name`, `mcp_meta_seen` (the distinct request `_meta` values), `mcp_meta_count`, and `first_word_latency` (always `unavailable` in the plugin).
 
 3. **Copy everything out of the plugin data folder** before you uninstall anything (uninstall deletes it):
 
@@ -242,7 +244,7 @@ Also note, for the whole session:
    - the `--json` report;
    - your checklist with the notes and exact replies;
    - `claude --version` and the session model;
-   - optionally, the Claude Code session transcripts, which show what the game master and subagents actually did (tool calls, refusals, background notices). The docs put subagent transcripts at `~/.claude/projects/<project>/<sessionId>/subagents/agent-<agentId>.jsonl`; the main session transcript sits beside them as `<sessionId>.jsonl`. For a session started in `~/harbor-play`, `<project>` is that path with every `/` turned into `-` (for example `-Users-nileshgupta-harbor-play`) **(unverified: the folder naming and the main transcript's file name are observed on this machine, not documented)**. These transcripts contain the characters' private knowledge, so read them only after you have finished playing.
+   - optionally, the Claude Code session transcripts, which show what the game master and subagents actually did (tool calls, refusals, background notices). The docs put subagent transcripts at `~/.claude/projects/<project>/<sessionId>/subagents/agent-<agentId>.jsonl`; the main session transcript sits beside them as `<sessionId>.jsonl`. The docs put the main transcript at `~/.claude/projects/<project>/<session-id>.jsonl`, where `<project>` is the working directory path with every non-alphanumeric character replaced by `-` (for `~/harbor-play`: `-Users-nileshgupta-harbor-play`). Claude Code deletes old transcripts after `cleanupPeriodDays` (30 days by default), so copy them soon. These transcripts contain the characters' private knowledge, so read them only after you have finished playing.
 
 ## 7. Troubleshooting
 
@@ -254,13 +256,14 @@ Also note, for the whole session:
 
    ```sh
    printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+     '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
      | PYTHONPATH=/Users/nileshgupta/Projects/text-rpg/src HARBOR_HOME="$(mktemp -d)" python3 -m harbor.mcp_server
    ```
 
-   Expected: one JSON line containing `"serverInfo": {"name": "harbor", "version": "0.1.0"}`. A Python traceback here is the real error.
+   Expected: two JSON lines, the first containing `"serverInfo": {"name": "harbor", "version": "0.1.0"}`, the second listing 20 tools (`look`, `go`, ... `submit_verdict`). A Python traceback here is the real error.
 4. In a session, `/mcp` shows the server's status and has **Reconnect** in its menu.
-5. For the error Claude Code saw, start `claude --debug`, then open `~/.claude/debug/<session-id>.txt` (the flag writes there, not to the terminal) and search for `harbor`. If the server failed less than 15 minutes earlier, Claude Code skips it at startup; use **Reconnect** in `/mcp` first.
-6. Startup timeout: `MCP_TIMEOUT=20000` before `claude` raises it to 20 seconds (the server normally starts in well under a second).
+5. For the error Claude Code saw, start `claude --debug` (or `claude --debug=mcp` for MCP messages only), then open `~/.claude/debug/<session-id>.txt` (the flag writes there, not to the terminal) and search for `harbor`. If the server failed less than 15 minutes earlier, Claude Code skips it at startup; use **Reconnect** in `/mcp` first.
+6. Startup timeout: the default is 30 seconds; `MCP_TIMEOUT=60000` before `claude` raises it to 60. The server normally starts in well under a second, so a timeout points to a hang worth reporting.
 
 ### 7.2 The game master says the game tools are not available
 
@@ -286,11 +289,12 @@ Use the namespaced form `/harbor-mystery:harbor-mystery`. If that is not in the 
 Signs: a "running in the background" notice, or the game master ending a reply with nothing for you and waiting.
 - Check the variables reached Claude Code: they must be on the same command line as `claude` (section 4 step 1), or exported in that shell first (`export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 CLAUDE_CODE_FORK_SUBAGENT=0`, then `claude`).
 - Start a new session; the variables are read at startup.
-- If it still happens, do not press Ctrl+B during a conversation (that moves work to the background), let the game master wait for the completion notice, and note the turn. The game still works: the command file tells the game master to wait for each subagent before the next step, and the server refuses out-of-order calls.
+- If it still happens (the variables were probably not set: with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, Ctrl+B moves nothing to the background), let the game master wait for the completion notice, and note the turn. The game still works: the command file tells the game master to wait for each subagent before the next step, and the server refuses out-of-order calls.
 
 ### 7.6 "a game is already active" or "finish the conversation first"
 
 - `a game is already active`: you ran the command twice in one session. Keep playing, or run `/harbor-mystery:harbor-mystery resume`.
+- `cannot load game: ... run <run_id> is open in another session (pid N)`: another Claude Code session (or a server process left behind by one) still holds that run. Close the other session, or if none is open, end that process (`kill N`), then run `resume` again.
 - `finish the conversation first`: a conversation was left open. The game master should finish it by itself; if it does not, say "finish the open conversation", and note it.
 
 ## 8. Uninstall and undo
@@ -308,14 +312,14 @@ Signs: a "running in the background" notice, or the game master ending a reply w
    claude plugin uninstall harbor-mystery@harbor-mystery-local --keep-data
    ```
 
-   This should also remove its `enabledPlugins` entry from `~/.claude/settings.json` **(unverified: the docs describe the scope `uninstall` acts on, not the settings edit; check the file afterwards)**.
+   Expected: `Successfully uninstalled plugin: harbor-mystery (scope: user)`. It removes the plugin's `enabledPlugins` entry from `~/.claude/settings.json` (the command fails if it cannot).
 3. **Remove the marketplace:**
 
    ```sh
    claude plugin marketplace remove harbor-mystery-local
    ```
 
-   The docs say removing a marketplace also uninstalls every plugin installed from it and removes their `enabledPlugins` entries. The repo itself is not touched. Afterwards, check that `extraKnownMarketplaces` in `~/.claude/settings.json` no longer names `harbor-mystery-local`, and delete that entry by hand if it does **(unverified: the docs say `add` writes it there but do not say `remove` deletes it)**.
+   This removes the marketplace's declaration (`extraKnownMarketplaces`) from every settings scope. It also uninstalls any plugin still installed from it, with that plugin's data, so if you skipped step 2 this deletes the runs and traces too. The repo itself is not touched.
 4. **Remove the allow rule:** delete the line `"mcp__plugin_harbor-mystery_harbor__*"` from `permissions.allow` in `~/.claude/settings.json` (and the `permissions` block if it is now empty and you added it), then check the file still parses (section 3.1 step 3). Or remove it in a session with `/permissions`.
 5. **Check:**
 
