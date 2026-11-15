@@ -28,6 +28,34 @@ Checked against Claude Code 2.1.325, its `--help` output, and the docs at code.c
 
    Both files must exist. If `ls` says "No such file", you are not on an up-to-date `main`.
 
+## 1a. Pick a way to run it
+
+| Way | Changes your Claude Code settings? | Use it when |
+| --- | --- | --- |
+| **A. Terminal, this session only** (recommended for the first run) | No. Nothing is installed and nothing is written to `~/.claude/settings.json`. | You want to try the game without touching your setup. |
+| **B. Terminal, installed** (sections 2 and 3) | Yes: the marketplace and the plugin are recorded in your user settings, plus the allow rule. | You will play often and want a short launch command. |
+| **C. Desktop app, Code tab** (section 4a) | Yes: installing adds the plugin to your user settings. The allow rule and the foreground setting can stay in the play folder only. | You prefer the desktop app. |
+
+Where the game does **not** run: the regular Claude chat app (desktop, web or mobile) ignores a plugin's local MCP server and its agents, so the game engine, the characters and the referee would not exist there; and Claude Code on the web (claude.ai/code) does not load plugins installed on your machine. Source: claude.com/docs/plugins/platform-support and code.claude.com/docs/en/plugins/install.md.
+
+### Way A: one session, no settings changes
+
+From an empty play folder (section 4 explains why), start Claude Code with the plugin loaded for this session only and the game's tools pre-approved for this session only:
+
+```sh
+mkdir -p ~/harbor-play && cd ~/harbor-play
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 CLAUDE_CODE_FORK_SUBAGENT=0 \
+  claude --plugin-dir /Users/nileshgupta/Projects/text-rpg \
+         --allowedTools "mcp__plugin_harbor-mystery_harbor__*"
+```
+
+- `--plugin-dir` loads the plugin from the repo for this session; it is not installed and leaves nothing behind.
+- `--allowedTools` approves only the 20 Harbor tools, only for this session. Tool names come from the plugin's own name (`harbor-mystery`) and server (`harbor`), not from a marketplace, so the pattern is the same as in section 3.1. Keep the value quoted.
+- The two environment variables keep the character and referee subagents in the foreground (section 3.2).
+- Runs and traces go to `~/.claude/plugins/data/harbor-mystery-inline/` instead of the path in section 3.3. **(unverified: the docs' naming rule gives the plugin id `harbor-mystery@inline` for `--plugin-dir`, but do not show this case; ask the game master "where is my game saved?" to see the real path.)**
+
+Then skip to section 4, step 2. If `claude mcp list` in another terminal does not show the server, that is expected: it lists installed plugins only. Inside the session, `/mcp` shows it.
+
 ## 2. Install
 
 The repo is its own marketplace (`.claude-plugin/marketplace.json`, name `harbor-mystery-local`), listing one plugin, `harbor-mystery`, whose source is the repo root.
@@ -94,6 +122,10 @@ Why this form: the docs say a plugin's MCP tools are named `mcp__plugin_<plugin>
 
 Alternative: inside a Claude Code session, `/permissions` lets you add the same rule and shows which settings file each rule comes from; choose your user settings.
 
+Narrower alternative: put the same `permissions` block in `~/harbor-play/.claude/settings.local.json` instead of your user settings. It then applies only to sessions started in the play folder.
+
+**Auto mode still needs this rule.** In auto mode Claude Code does not prompt; a classifier reviews each tool call that no rule matches, and it can block calls (Claude is told the reason; after 3 blocks in a row or 20 in total, auto mode pauses and prompting resumes). A character's dialogue could look suspicious to it. With the allow rule, or `--allowedTools` in Way A, the game's calls match a rule and run immediately without the classifier. The subagents inherit the session's mode, and in auto mode the classifier also reviews each subagent's task and final report. Source: code.claude.com/docs/en/permission-modes.md and sub-agents.md. `bypassPermissions` mode needs no rule, but it turns off prompts for everything, not just the game.
+
 ### 3.2 Run the character and referee subagents in the foreground
 
 With nothing configured, a subagent spawned from an interactive session starts in the background, and the game master would have to wait for completion notifications. Start Claude Code for play with these two environment variables:
@@ -146,7 +178,7 @@ Cases are read from the repo's `cases/` folder (the server's default; `HARBOR_CA
    ```
 
    - No argument: a new game of Saltmere (the default case).
-   - A case id: `saltmere`, `gaiety` or `kestrel` (later also `clover` and `saffron` if they are added to `cases/`). An unknown id gets an error listing the ids that exist.
+   - A case id: `saltmere`, `gaiety`, `kestrel`, `clover` or `saffron`. An unknown id gets an error listing the ids that exist.
    - `resume`: continue the most recently saved run; `resume <run_id>` continues a given one.
 
    The namespaced form `/harbor-mystery:harbor-mystery` is the documented name of a plugin command (`/<plugin>:<file>`). The bare `/harbor-mystery` may also work; **(unverified: the docs document the bare name only for skills, not for plugin commands; try it once and note whether it runs.)** Typing `/harbor` should show the command in the menu.
@@ -162,6 +194,29 @@ Cases are read from the repo's `cases/` folder (the server's default; `HARBOR_CA
    To keep the run spoiler-free, do not open the subagent transcripts (Enter on a subagent row, or `/tasks`): they show the character's private knowledge and drafts.
 
 4. **Stop** by saying you are quitting, or exit Claude Code (`/exit` or Ctrl+D). The game is saved after every tool call; `/harbor-mystery:harbor-mystery resume` in a new session continues it.
+
+## 4a. Playing in the desktop app (Way C)
+
+The desktop app's **Code** tab runs ordinary local Claude Code sessions, so the plugin works there: the game server runs on your computer. The terminal, the desktop app and the VS Code extension read the same settings files, so a plugin installed in one is available in the others. Not the regular chat tab: see section 1a.
+
+1. **Install once.** Either run section 2 in a terminal (the desktop app then sees the plugin), or in a local session in the Code tab click **+** next to the prompt box, choose **Add plugins** (or **Plugins**, then **Browse plugins**), and pick `harbor-mystery`. The marketplace must be added first; the in-app browser lists plugins from marketplaces you have added, and the documented way to add a local-path marketplace is `claude plugin marketplace add` in a terminal (section 2, step 1). Source: code.claude.com/docs/en/plugins/install.md (Desktop app tab).
+2. **Make the play folder carry the game's settings**, so you need no command-line flags and your user settings stay unchanged apart from the install. Create `~/harbor-play/.claude/settings.local.json` containing:
+
+   ```json
+   {
+     "permissions": {
+       "allow": ["mcp__plugin_harbor-mystery_harbor__*"]
+     },
+     "env": {
+       "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1",
+       "CLAUDE_CODE_FORK_SUBAGENT": "0"
+     }
+   }
+   ```
+
+   **(unverified: that these two variables take effect when set through the settings `env` key rather than the shell. If subagents still run in the background, see Troubleshooting 7.5.)**
+3. **Open a new local session in the Code tab with `~/harbor-play` as its folder**, and type `/harbor-mystery:harbor-mystery` (it appears in the slash-command list). Play as in section 4, steps 2 to 4.
+4. **Check subagents work there on your first turn with a conversation:** you should see the "character reply" and "reply check" runs. The docs do not say plugin subagents behave any differently in the Code tab, but they do not state it either. **(unverified)**
 
 ## 5. Real-run checklist (M7-T13)
 
