@@ -1,6 +1,6 @@
 # ADR 004: M7, the Claude Code plugin and the interaction lifecycle
 
-Date: 2026-11-15. Status: proposed (Phase 0 design; nothing is implemented yet).
+Date: 2026-11-15. Status: proposed, owner's answers to the open questions recorded in section 7 (Phase 0 design; nothing is implemented yet).
 
 Inputs: `docs/BRIEF.md` (M7), `docs/M7_ARCHITECTURAL_BRIEF.md` with its amendments (the amendments win where they disagree), ADR 001 to 003, the owner's M7 kickoff decisions (one lifecycle, draft agent files, the owner plays the real run, minimal evaluation, `v0.1.0` after M7).
 
@@ -268,3 +268,14 @@ Parallel sets: wave A (T01, T02, T03, T04); wave C (T06, T07, T08); wave D (T09,
 6. **Who installs.** (a) Claude runs `claude plugin marketplace add` and `install` in Phase 3 (no model call; it writes your `~/.claude` settings, and `claude plugin uninstall` undoes it). (b) You install from the steps. *Recommend (a).*
 7. **Agent models.** (a) Game master: session model; NPC: `sonnet`; referee: `haiku` (the brief's "cheap model check"). (b) All `inherit`. *Recommend (a).*
 8. **`resume_game` scope.** (a) Minimal: latest run or a run id, recovery included. (b) None: every session starts a new game, and recovery runs only when the server restarts within a session. *Recommend (a): it is the natural home of recovery and costs little.*
+
+### Owner answers (2026-11-15)
+
+1. **Launch mode: (b), a plain session with `/harbor-mystery`.** The game master's restraint from reading `cases/saltmere.json` and from calling NPC or referee tools rests on its prompt only. `agents/game-master.md` is still written so that `--agent` mode works, but it is not the documented way to play. Section 2.5 point 2 and conflict 11 therefore describe a protection this launch mode does not use; the trust boundary for game state is unchanged (Python), but spoiler protection is prompt-only.
+2. Closing a turn: (a), as recommended.
+3. Interrupted conversation: (a), commit the fallback line.
+4. Runs and traces: (a), `${CLAUDE_PLUGIN_DATA}` with the `HARBOR_HOME` override, as recommended.
+5. Command: (a), as recommended.
+6. **Who installs: (b), the owner** runs the install commands. M7-T12 prepares and documents them and checks the result after the owner runs them; it does not run `marketplace add` or `install` itself.
+7. Agent models: (a), game master on the session model, NPC `sonnet`, referee `haiku`.
+8. `resume_game`: (a), as recommended.
