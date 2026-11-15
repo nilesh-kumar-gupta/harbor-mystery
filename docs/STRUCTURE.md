@@ -54,12 +54,15 @@ text-rpg/
 │   ├── tracing.py            span() helper -> spans table + JSONL
 │   ├── llm/
 │   │   ├── base.py           LLMClient interface
-│   │   ├── scripted.py       ScriptedLLM, deterministic, for tests
-│   │   └── hosted.py         HostedLLM, Anthropic Messages API
-│   ├── prompts/              game_master.md, npc.md, referee.md
+│   │   └── scripted.py       ScriptedLLM, deterministic, for tests and offline play
+│   ├── prompts/              game_master.md, npc.md, referee.md; __init__.py loads and hashes them
+│   ├── commands.py           typed command grammar -> tool call; tool result -> text
+│   ├── session.py            wires one game: run database, tracer, agents and their models
+│   ├── offline.py            the ScriptedLLM stand-ins for the game master, NPCs and referee
+│   ├── solver.py             case solver over the clue graph (tests only)
 │   └── bot.py                scripted bot player
-├── tests/                    offline by default; `pytest -m live` for model checks
-├── traces/                   <run_id>.jsonl, plus 5-10 saved examples
+├── tests/                    all offline, through ScriptedLLM
+├── traces/                   <run_id>.jsonl (git-ignored), 9 saved examples, make_examples.py
 └── (M7) .claude-plugin/, mcp_server.py, commands/, agents/
 ```
 
@@ -75,7 +78,7 @@ Each module has one job and one hard limit; the limits are what make the archite
 | `tools` | The registry and the 10 tool functions; turns engine results into JSON, errors as `{"ok": false, "error": ...}` | Raise exceptions to the agent, or accept a character ID on NPC tools |
 | `agents` | The loop: send messages to the model, run the tool calls it asks for, stop at the cap | Read or write the database directly, or see `case_solution` |
 | `referee` | Checking an NPC reply against that character's knowledge; reject, regenerate up to 2 times, then a fallback line | Change game state |
-| `llm` | One interface, two implementations (`ScriptedLLM`, `HostedLLM`) | Know anything about the game |
+| `llm` | One interface (`LLMClient`) and `ScriptedLLM`; the real model arrives in M7 through the plugin (ADR 003) | Know anything about the game |
 | `tracing` | The `span()` helper writing the `spans` table and the JSONL mirror | Be bypassed: no model or tool call happens outside a span |
 | `cli` | Arguments, creating a run, the turn loop, printing | Contain game rules |
 | `prompts` | The three prompt files; their hash is stored on each run | Hold facts about the case |
@@ -410,7 +413,7 @@ Column lists are in the brief's data model table.
 
 ## Tests
 
-One test file per acceptance check in the brief, all offline through `ScriptedLLM` except the live smoke test.
+One test file per acceptance check in the brief, all offline through `ScriptedLLM`. The brief's live smoke test moves to M7 (ADR 003).
 
 | Test file | Checks | Milestone |
 | --- | --- | --- |
@@ -422,7 +425,6 @@ One test file per acceptance check in the brief, all offline through `ScriptedLL
 | `test_case_solver.py` | Every clue needed for a win is reachable from the start; the clues point to exactly one culprit | M5 |
 | `test_bot_player.py` | The scripted bot wins in under 40 turns with at least 2 correct clues | M5 |
 | `test_replay.py` | Two runs with one seed, and a replay from the log, give the same state hash | M5 |
-| `test_live_smoke.py` | 10 turns with the hosted model; reports time to first words and the referee leak rate | M3, `pytest -m live` |
 
 ## Milestones
 
@@ -431,7 +433,7 @@ One test file per acceptance check in the brief, all offline through `ScriptedLL
 | M0 scaffold | `pyproject.toml`, package folders, `case_loader.py`, a baseline `saltmere.json` | Polishing `saltmere.json`: descriptions, personas, speech styles, fallback lines |
 | M1 engine core | `schema.py`, `state.py`, `events.py`, `rules.py`, `registry.py`, `look` / `go` / `notebook`, plain `cli.py`, tests | ADR on event log versus mutable state |
 | M2 tracing + model interface | `tracing.py`, `llm/base.py`, `llm/scripted.py`, spans around every tool | ADR on the tool registry |
-| M3 agents | `agents/loop.py`, `npc.py`, `game_master.py`, `talk`, NPC tools, `llm/hosted.py` | The three prompt files; `HARBOR_MODEL` and `ANTHROPIC_API_KEY`; the live smoke test with Mira; ADR on the active-character rule |
+| M3 agents | `agents/loop.py`, `npc.py`, `game_master.py`, `talk`, NPC tools, offline stand-ins | The three prompt files; ADR on the active-character rule |
 | M4 referee + hints | `referee.py`, `hints.py`, the `hint` tool | ADR on the referee design |
 | M5 ending + bot | `scoring.py`, `accuse`, `bot.py`, solver, replay test | The bot's walkthrough: the ordered commands that solve the case |
 | M6 release | README structure, trace saving, tag `v0.1.0` | Playing a full game for the demo transcript; README prose; choosing 5-10 traces |

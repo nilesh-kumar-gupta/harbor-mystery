@@ -1,1 +1,1 @@
-"""LLMClient interface with ScriptedLLM and HostedLLM. (M2, M3)"""
+"""The LLMClient interface and ScriptedLLM. (M2) A real model arrives in M7 via the plugin."""

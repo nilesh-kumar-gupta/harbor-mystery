@@ -12,10 +12,10 @@ import sys
 import time
 from pathlib import Path
 
-from harbor.commands import HELP, parse_command, render, render_ending
+from harbor.commands import HELP, parse_command, render_ending
 from harbor.engine.case_loader import CaseError, load_case
 from harbor.offline import offline_llms
-from harbor.session import Session, hosted_llms
+from harbor.session import Session
 
 DEFAULT_CASE = Path("cases/saltmere.json")
 
@@ -28,9 +28,6 @@ def main(argv: list[str] | None = None) -> int:
     play = sub.add_parser("play", help="play in the terminal by typing commands")
     play.add_argument("--case", type=Path, default=DEFAULT_CASE)
     play.add_argument("--seed", type=int, default=0)
-    play.add_argument("--hosted", action="store_true",
-                      help="use the hosted model (HARBOR_MODEL, ANTHROPIC_API_KEY) for the "
-                           "game master and the characters; default is offline")
     play.add_argument("--db", default=None,
                       help="run database path (default runs/<run_id>.sqlite; "
                            "':memory:' keeps nothing)")
@@ -52,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "bot":
         return run_bot(case, args.seed)
-    return play_loop(case, args.seed, args.db, hosted=args.hosted)
+    return play_loop(case, args.seed, args.db)
 
 
 def run_bot(case, seed: int, out=print) -> int:
@@ -67,18 +64,14 @@ def run_bot(case, seed: int, out=print) -> int:
 
 
 def play_loop(case, seed: int, db: str | None, lines=None, out=print,
-              traces_dir: Path = Path("traces"), hosted: bool = False, llms=None) -> int:
+              traces_dir: Path = Path("traces"), llms=None) -> int:
     """The game loop: one line is one turn for the game master. `lines` defaults to stdin.
 
-    Offline (the default) the game master and characters are deterministic
-    stand-ins that understand typed commands; `hosted` uses the real model.
+    The game master and characters are the offline stand-ins (deterministic
+    `ScriptedLLM` policies that understand typed commands) unless `llms` is given.
     """
     if llms is None:
-        try:
-            llms = hosted_llms() if hosted else offline_llms()
-        except Exception as e:
-            print(f"cannot start the hosted model: {e}", file=sys.stderr)
-            return 1
+        llms = offline_llms()
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-s{seed}"
     if db is None:
         Path("runs").mkdir(exist_ok=True)
@@ -101,17 +94,14 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
         if line.lower() in ("help", "?"):
             out(HELP)
             continue
-        if not hosted and parse_command(line) is None:  # offline, a typo is not a turn
+        if parse_command(line) is None:  # a typo is not a turn
             out("(not a command) " + HELP)
             continue
         result = session.turn(line)
         out(result.narration)
         if result.status == "ended":
-            accused = [r for name, _, r in result.tool_results if name == "accuse" and r.get("ok")]
             if result.end.get("result") == "timeout":
                 out(f"The day is over (timeout).\n{render_ending(result.end)}")
-            elif accused and hosted:   # the result screen comes from the engine, not the model
-                out(render("accuse", accused[-1]))
             break
     return 0
 
@@ -127,11 +117,15 @@ def _git_commit() -> str | None:
 
 
 def _stdin_lines():
+    echo = not sys.stdin.isatty()   # commands piped from a file: show them, as a transcript
     while True:
         try:
-            yield input("> ")
+            line = input("> ")
         except EOFError:
             return
+        if echo:
+            print(line)
+        yield line
 
 
 if __name__ == "__main__":

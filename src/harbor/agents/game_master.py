@@ -48,7 +48,7 @@ class GameMaster:
                     lambda name, args: REGISTRY.call(ctx, name, args, "gm"),
                     MAX_TOOL_CALLS, attrs={"game.turn": turn},
                 )
-            except Exception as e:  # e.g. the hosted model is unreachable: the turn still ends
+            except Exception as e:  # e.g. the model client fails: the turn still ends
                 span.status = "error"
                 span.attrs["error.type"] = type(e).__name__
                 out = LoopResult(text=f"{MODEL_ERROR} ({type(e).__name__}: {e})")

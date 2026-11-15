@@ -17,12 +17,6 @@ from harbor.tools import REGISTRY, Context
 from harbor.tracing import Tracer
 
 
-def hosted_llms() -> dict:
-    from harbor.llm.hosted import HostedLLM
-    model = HostedLLM()
-    return {"gm": model, "npc": model, "referee": model}
-
-
 @dataclass
 class Session:
     ctx: Context

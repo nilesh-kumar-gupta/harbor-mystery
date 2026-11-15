@@ -4,14 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "harbor-mystery"
-version = "0.0.1"
+version = "0.1.0"
 description = "A terminal detective game used as a test bed for a multi-agent architecture."
 requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
-hosted = ["anthropic"]
 
 [project.scripts]
 harbor = "harbor.cli:main"
@@ -24,5 +23,3 @@ harbor = ["prompts/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not live'"
-markers = ["live: needs the hosted model and ANTHROPIC_API_KEY"]

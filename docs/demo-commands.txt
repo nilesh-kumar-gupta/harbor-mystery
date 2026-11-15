@@ -1,0 +1,17 @@
+look
+talk mira: Did you see anyone on the quay last night?
+go lighthouse
+go chandlery
+talk ysolde: Who has bought bolt cutters from you lately?
+talk ysolde: I understand. Please, it matters for the whole harbor.
+go lighthouse
+talk bram: Did you see any boats or lights on the water at night?
+hint
+go chandlery
+go quay
+go fish market
+talk tom: Where were you last night?
+go salt cask
+talk hale: When did Tom leave last night? He has a bad knee, hasn't he?
+notebook
+accuse tom: he wanted to keep his monopoly on the small boats C3 C4 C5 C6

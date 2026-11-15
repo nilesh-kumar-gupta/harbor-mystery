@@ -46,15 +46,9 @@ def test_imports_run_one_way():
     assert problems == []
 
 
-def test_only_the_hosted_client_imports_anthropic():
-    users = [str(p.relative_to(SRC)) for p in SRC.rglob("*.py")
-             if any(n.split(".")[0] == "anthropic" for n in imports(p))]
-    assert set(users) <= {"llm/hosted.py"}
-
-
 def test_only_standard_library_and_harbor_are_imported():
     import sys
-    allowed = set(sys.stdlib_module_names) | {"harbor", "anthropic"}
+    allowed = set(sys.stdlib_module_names) | {"harbor"}
     for path in SRC.rglob("*.py"):
         assert {n.split(".")[0] for n in imports(path)} <= allowed, path
 

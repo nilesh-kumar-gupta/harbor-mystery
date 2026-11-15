@@ -207,3 +207,20 @@ def test_plain_play_loop_is_traced_per_turn(case, tmp_path):
                      ("t0001", "chat"), ("t0001", "end_turn"),
                      ("t0002", "game_master"), ("t0002", "chat"), ("t0002", "go"),
                      ("t0002", "chat"), ("t0002", "end_turn")]
+
+
+def test_commands_piped_from_a_file_are_echoed(monkeypatch, capsys):
+    import io
+
+    from harbor import cli
+    monkeypatch.setattr("sys.stdin", io.StringIO("look\ngo office\n"))
+    assert list(cli._stdin_lines()) == ["look", "go office"]
+    assert capsys.readouterr().out == "> look\n> go office\n> "
+
+
+def test_the_cli_has_no_hosted_mode():
+    import pytest
+
+    from harbor import cli
+    with pytest.raises(SystemExit):
+        cli.main(["play", "--hosted"])

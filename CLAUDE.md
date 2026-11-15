@@ -6,12 +6,12 @@ A terminal detective game used as a test bed for a hand-written multi-agent arch
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'   # first-time setup
-.venv/bin/pytest                 # offline tests (default excludes live)
-.venv/bin/pytest -m live         # model-backed checks; needs ANTHROPIC_API_KEY and HARBOR_MODEL
+.venv/bin/pytest                 # the offline test suite
 .venv/bin/harbor check-case      # validate cases/saltmere.json
 .venv/bin/harbor play            # play offline by typing commands; --seed N, --db PATH
-.venv/bin/harbor play --hosted   # play with the hosted model (HARBOR_MODEL, ANTHROPIC_API_KEY)
+.venv/bin/harbor play < docs/demo-commands.txt   # the README's demo game (commands are echoed)
 .venv/bin/harbor bot             # watch the scripted bot solve the case offline
+.venv/bin/python traces/make_examples.py         # regenerate the saved example traces
 ```
 
 ## Architecture rules (enforced by tests, do not relax)
@@ -22,15 +22,15 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'   # first-time setup
 - Tools return errors as values (`{"ok": false, "error": "..."}`), never exceptions.
 - `case_solution` is read only by scoring, never passed to an agent.
 - Every model call, tool call and referee check goes through `tracing.span()`.
-- No agent frameworks. Standard library plus `pytest`; `anthropic` only in `llm/hosted.py`.
+- No agent frameworks. Standard library plus `pytest`; no model SDK (ADR 003: the real model arrives in M7 through the Claude Code plugin).
 
 ## Working agreements
 
 - Build in the brief's milestone order (M0 to M7). Commit after each milestone with tests passing, then stop and report: what works, what is next, any change from the brief.
 - Do not add features outside the brief; put ideas in `docs/IDEAS.md`.
 - Small decisions go in a short ADR (`docs/adr/NNN-title.md`, half a page).
-- Keys come from environment variables and never enter the repo.
-- Tests stay offline through `ScriptedLLM`; anything needing the hosted model is marked `live`.
+- No keys are needed; none may ever enter the repo.
+- Tests stay offline through `ScriptedLLM`.
 
 ## Who writes what
 
@@ -43,4 +43,4 @@ The owner writes prose, data and judgement calls; Claude writes code and tests. 
 
 ## Status
 
-M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, `harbor play`). M2 done (`tracing.span()` writing the spans table and `traces/<run_id>.jsonl`, `LLMClient`, `ScriptedLLM`, every tool call in a span). M3 done (agent loop, NPC agent, game master, `talk` with the active-character rule and per-character trust, the four NPC tools, `HostedLLM`, offline stand-ins, prompt stubs; `tests/test_live_smoke.py` written but not yet run). M4 done (referee: keyword code check then a model check, regenerate up to 2 times, then the fallback line; pointer hints, the stuck nudge after 8 turns, the `hint` tool). Build decisions are in `docs/adr/002-build-decisions.md`. M5 done (`accuse` scored by `engine/scoring.py`, the ending and timeout screens, the case solver, the bot player, determinism and replay tests). Next: M6, release (README, saved traces, tag; owner tasks first).
+M0 done (scaffold, case loader, `harbor check-case`). M1 done (schema, state, event log and replay, rules, tool registry, `look` / `go` / `notebook`, engine steps `start_run` / `end_turn`, `harbor play`). M2 done (`tracing.span()` writing the spans table and `traces/<run_id>.jsonl`, `LLMClient`, `ScriptedLLM`, every tool call in a span). M3 done (agent loop, NPC agent, game master, `talk` with the active-character rule and per-character trust, the four NPC tools, offline stand-ins, prompt stubs). M4 done (referee: keyword code check then a model check, regenerate up to 2 times, then the fallback line; pointer hints, the stuck nudge after 8 turns, the `hint` tool). Build decisions are in `docs/adr/002-build-decisions.md`. M5 done (`accuse` scored by `engine/scoring.py`, the ending and timeout screens, the case solver, the bot player, determinism and replay tests). M6 done (hosted mode dropped per `docs/adr/003-drop-hosted-mode.md`; README with architecture notes and a demo transcript from the offline stand-ins; 9 saved traces in `traces/` with `traces/README.md`); tag `v0.1.0` waits for the owner. Next: M7, the Claude Code plugin.
