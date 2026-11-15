@@ -215,12 +215,13 @@ def test_commands_piped_from_a_file_are_echoed(monkeypatch, capsys):
     from harbor import cli
     monkeypatch.setattr("sys.stdin", io.StringIO("look\ngo office\n"))
     assert list(cli._stdin_lines()) == ["look", "go office"]
-    assert capsys.readouterr().out == "> look\n> go office\n> "
+    assert capsys.readouterr().out == "> look\n> go office\n> \n"
 
 
 def test_the_cli_has_no_hosted_mode():
     import pytest
 
     from harbor import cli
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exit_info:
         cli.main(["play", "--hosted"])
+    assert exit_info.value.code == 2          # argparse: unrecognized argument

@@ -1,6 +1,6 @@
 # Saved example traces
 
-Each file is the JSONL mirror of one game's `spans` table: one span per line, linked by `parent_span_id`, one trace per turn (`<run_id>-t0001`, ...). All were produced by running the real code offline; none was written or edited by hand. Kinds are `agent`, `llm_call`, `tool_call` and `referee`; a rejected NPC draft keeps its raw text in a span with status `rejected`.
+Each file is the JSONL mirror of one game's `spans` table: one span per line, linked by `parent_span_id`, one trace per turn (`<run_id>-t0001`, ...) after a `<run_id>-setup` trace for `start_run`. All were produced by running the real code offline; none was written or edited by hand. Kinds are `agent`, `llm_call`, `tool_call` and `referee`; a rejected NPC draft keeps its raw text in a span with status `rejected`.
 
 | File | What it shows |
 | --- | --- |
@@ -29,6 +29,6 @@ All the others come from one script, which plays each game in memory through `Se
 .venv/bin/python traces/make_examples.py
 ```
 
-The offline stand-ins never misbehave, so for the bad examples the script swaps in a `ScriptedLLM` that does: an NPC model that states a clue it does not know, one that adds a stray fact, one that tries to reveal a guarded clue, and a referee model that answers `LEAK` once. The engine, tools, referee and tracing that handle them are the real code. Timestamps differ between runs; everything else is deterministic.
+The offline stand-ins never misbehave, so for the bad examples the script swaps in a `ScriptedLLM` that does: an NPC model that states a clue it does not know, one that adds a stray fact, one that tries to reveal a guarded clue, and a referee model that answers `LEAK` once. The engine, tools, referee and tracing that handle them are the real code. Timestamps (and the demo game's run id, which is timestamped) differ between runs; everything else is deterministic.
 
 Per-run traces written by `harbor play` (`traces/<run_id>.jsonl`) are ignored by git. These examples were added with `git add -f`.

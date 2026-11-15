@@ -122,6 +122,8 @@ def _stdin_lines():
         try:
             line = input("> ")
         except EOFError:
+            if echo:
+                print()   # end the last prompt's line
             return
         if echo:
             print(line)
