@@ -266,17 +266,21 @@ def test_registry_and_adr_agree_on_every_other_tool():
 # --- case neutrality ---------------------------------------------------------------
 
 def case_words():
-    """Names that tie a text to one case: ids, titles, places, characters, roles."""
+    """Names that tie a text to one case: ids, whole titles, whole place names,
+    the parts of character names, and roles. Titles and place names are matched
+    as whole phrases, so ordinary words inside them ("The Water That Went Uphill",
+    "Supply Room") do not count on their own."""
     words = {"villager", "village", "fishing", "fisherman", "harbor", "harbour", "quay",
              "theatre", "theater", "stage", "observatory", "mountain", "telescope"}
     for path in (ROOT / "cases").glob("*.json"):
         case = json.loads(path.read_text(encoding="utf-8"))
         words.add(case["case_id"])
-        words.update(case["title"].split())
-        for item in case["places"] + case["characters"]:
-            words.update(item["name"].split())
-        words.update(c["role"] for c in case["characters"])
-    return {w.lower().strip(".,'") for w in words if len(w) > 3} - {"the"}
+        words.add(case["title"])
+        words.update(place["name"] for place in case["places"])
+        for character in case["characters"]:
+            words.update(part for part in character["name"].split() if len(part) > 3)
+            words.add(character["role"])
+    return {w.lower().strip(".,'") for w in words if len(w) > 3}
 
 
 @pytest.mark.parametrize("path", (NPC, REFEREE), ids=lambda p: p.name)
