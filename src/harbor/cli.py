@@ -34,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--db", default=None,
                       help="run database path (default runs/<run_id>.sqlite; "
                            "':memory:' keeps nothing)")
+    bot = sub.add_parser("bot", help="watch the scripted bot play the case offline")
+    bot.add_argument("--case", type=Path, default=DEFAULT_CASE)
+    bot.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
 
     try:
@@ -47,7 +50,20 @@ def main(argv: list[str] | None = None) -> int:
             f"{len(case.characters)} characters, {len(case.clues)} clues. OK"
         )
         return 0
+    if args.command == "bot":
+        return run_bot(case, args.seed)
     return play_loop(case, args.seed, args.db, hosted=args.hosted)
+
+
+def run_bot(case, seed: int, out=print) -> int:
+    """The bot plays an in-memory offline game; prints the transcript and the result."""
+    from harbor.bot import Bot
+    session = Session.create(case, f"bot-s{seed}", offline_llms(), seed=seed)
+    game = Bot(session).play()
+    for line, narration in game.transcript:
+        out(f"> {line}\n{narration}")
+    out(f"\nBot finished in {game.turns} turns: {game.result}")
+    return 0 if game.result == "win" else 1
 
 
 def play_loop(case, seed: int, db: str | None, lines=None, out=print,

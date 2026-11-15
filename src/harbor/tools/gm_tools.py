@@ -4,7 +4,7 @@ state through it, and returns plain JSON."""
 from __future__ import annotations
 
 from harbor import prompts, referee
-from harbor.engine import hints, rules, state
+from harbor.engine import hints, rules, scoring, state
 from harbor.tools.registry import REGISTRY, Context, error
 
 LOOK_MINUTES = 5
@@ -185,3 +185,29 @@ def hint(ctx: Context) -> dict:
     state.note_hint(game, target["clue_id"] if target else None)
     shown = {k: target[k] for k in ("character", "place")} if target else None
     return {"ok": True, "target": shown, "clock": state.clock_text(clock)}
+
+
+@REGISTRY.tool("accuse", "gm",
+               "Accuse someone, with the motive in the player's words and the ids of "
+               "notebook clues that support it. Ends the game and reveals what happened. Free.",
+               {"character": {"type": "string", "description": "Name or id of the accused"},
+                "motive": {"type": "string"},
+                "clue_ids": {"type": "array", "items": {"type": "string"},
+                             "description": "Ids of clues from the notebook"}},
+               required=("character", "motive", "clue_ids"))
+def accuse(ctx: Context, character: str, motive: str, clue_ids: list[str]) -> dict:
+    game = ctx.game
+    who = rules.resolve_character(game, character)
+    if who is None:
+        return error(f"unknown character {character!r}")
+    found = state.found_clue_ids(game)
+    ids = list(dict.fromkeys(clue_ids))             # keep order, drop repeats
+    for clue_id in ids:
+        if rules.clue(game, clue_id) is None:
+            return error(f"unknown clue {clue_id!r}", notebook=sorted(found))
+        if clue_id not in found:
+            return error(f"clue {clue_id} is not in the notebook", notebook=sorted(found))
+    out = scoring.score(game, who["id"], ids)
+    state.end_game(game, out["result"], {"accused": who["id"], "motive": motive,
+                                         "clue_ids": ids})
+    return {"ok": True, "accused": who["name"], "motive_given": motive, **out}

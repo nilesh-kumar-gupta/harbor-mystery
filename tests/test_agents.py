@@ -316,7 +316,7 @@ def test_game_master_turn_runs_tools_then_end_turn(ctx):
     first = llm.calls[0]
     assert first["messages"][0]["content"].startswith("Player: look around\n\nState: ")
     assert '"place": "Harbor Quay"' in first["messages"][0]["content"]
-    assert first["tools"] == ["look", "go", "notebook", "talk", "hint"]
+    assert first["tools"] == ["look", "go", "notebook", "talk", "hint", "accuse"]
 
 
 def test_game_master_recovers_from_an_error_value(ctx):

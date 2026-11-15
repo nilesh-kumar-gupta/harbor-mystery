@@ -74,8 +74,9 @@ def render(tool: str, result: dict) -> str:
         where = f" at {target['place']}" if target.get("place") else ""
         return f"Hint: {target.get('character') or 'someone'}{where} could help. [{result['clock']}]"
     if tool == "accuse":
-        lines = [f"Result: {result['result'].upper()}",
+        lines = [f"You accuse {result['accused']}.", f"Result: {result['result'].upper()}",
                  f"Supporting clues that count: {', '.join(result['supporting']) or 'none'}",
+                 f"Found: {', '.join(result['found']) or 'none'}",
                  f"Missed: {', '.join(result['missed']) or 'none'}",
                  f"The culprit: {result['culprit']}", f"The motive: {result['true_motive']}",
                  "What really happened:"]
@@ -85,6 +86,10 @@ def render(tool: str, result: dict) -> str:
 
 
 def render_ending(end: dict) -> str:
-    """The timeout ending: the true timeline, from end_turn's result."""
-    lines = [f"  {line}" for line in end.get("true_timeline", ())]
-    return ("What really happened:\n" + "\n".join(lines)) if lines else ""
+    """The timeout ending, from end_turn's result."""
+    if not end.get("true_timeline"):
+        return ""
+    lines = [f"The culprit: {end['culprit']}", f"The motive: {end['true_motive']}",
+             f"Found: {', '.join(end['found']) or 'none'}",
+             f"Missed: {', '.join(end['missed']) or 'none'}", "What really happened:"]
+    return "\n".join(lines + [f"  {line}" for line in end["true_timeline"]])
