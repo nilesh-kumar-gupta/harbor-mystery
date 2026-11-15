@@ -7,6 +7,7 @@ registry and prints what comes back.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -74,8 +75,11 @@ def play_loop(case, seed: int, db: str | None, lines=None, out=print,
         llms = offline_llms()
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-s{seed}"
     if db is None:
-        Path("runs").mkdir(exist_ok=True)
-        db = f"runs/{run_id}.sqlite"
+        runs = Path(os.environ.get("HARBOR_HOME", ".")) / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        db = str(runs / f"{run_id}.sqlite")
+    if traces_dir == Path("traces"):
+        traces_dir = Path(os.environ.get("HARBOR_HOME", ".")) / "traces"
     jsonl = None if db == ":memory:" else Path(traces_dir) / f"{run_id}.jsonl"
     for path in (Path(db) if db != ":memory:" else None, jsonl):
         if path is not None and path.exists():

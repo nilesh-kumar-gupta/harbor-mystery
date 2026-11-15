@@ -19,7 +19,7 @@ from harbor.tracing import Tracer
 @dataclass
 class Session:
     ctx: Context
-    gm: GameMaster
+    gm: GameMaster | None
 
     @classmethod
     def create(cls, case: Case, run_id: str, llms: dict, seed: int = 0,
@@ -34,3 +34,13 @@ class Session:
 
     def turn(self, line: str) -> TurnResult:
         return self.gm.run_turn(self.ctx, line)
+
+    @classmethod
+    def open(cls, run_id: str | None = None, llms: dict | None = None) -> "Session":
+        """Open a persistent run through the same recovery tool as MCP."""
+        ctx = Context()
+        result = REGISTRY.call(ctx, "resume_game", {"run_id": run_id} if run_id else {}, "gm")
+        if not result["ok"]:
+            raise ValueError(result["error"])
+        gm = GameMaster(llms["gm"], llms["npc"], llms.get("referee")) if llms else None
+        return cls(ctx, gm)
