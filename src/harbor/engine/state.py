@@ -184,6 +184,10 @@ def say(game: Game, character_id: str, speaker: str, text: str) -> None:
                   {"character": character_id, "speaker": speaker, "text": text})
 
 
+def note_hint(game: Game, clue_id: str | None) -> None:
+    events.record(game, "hint_used", {"clue_id": clue_id})
+
+
 def record_shown(game: Game, character_id: str, clue_ids: list[str]) -> None:
     """Note which notebook clues the player showed this character, as they said it."""
     events.record(game, "clues_shown", {"character": character_id, "clue_ids": clue_ids})

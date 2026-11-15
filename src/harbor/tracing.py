@@ -101,6 +101,14 @@ class Tracer:
             if not self._stack:
                 self.flush()
 
+    def amend(self, span: Span, **fields) -> None:
+        """Change a closed span before it is written, e.g. mark a draft `rejected`
+        once the referee has judged it. Closed spans wait for their root to close."""
+        if not any(pending is span for pending, _ in self._pending):
+            raise RuntimeError(f"span {span.span_id} is already written")
+        for name, value in fields.items():
+            setattr(span, name, value)
+
     def flush(self) -> None:
         """Write every closed span, in the order they were opened.
 

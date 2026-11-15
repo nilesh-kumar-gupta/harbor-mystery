@@ -184,3 +184,57 @@ def test_an_interrupt_inside_a_tool_rolls_back_and_closes_the_savepoint(traced, 
         REGISTRY.call(traced, "go", {"place": "office"}, "gm")
     assert not traced.game.conn.in_transaction
     assert events.state_hash(traced.game.conn, traced.game.run_id) == before
+
+
+TWENTY_TURNS = [
+    "look", "talk mira: did you see anyone on the quay last night?", "talk mira: and the tavern?",
+    "go office", "talk odrin: tell me about the town meeting", "talk odrin: who wished the harbor ill?",
+    "go quay", "go chandlery", "talk ysolde: the cable was cut clean. who bought cutters?",
+    "go lighthouse", "talk bram: any boats on the water last night?", "go chandlery", "go quay",
+    "go fish market", "talk tom: where were you last night?", "go salt cask",
+    "talk hale: was Tom here at midnight?", "notebook", "hint", "talk hale: thank you",
+]
+
+
+def test_a_twenty_turn_game_is_fully_traced(make_session):
+    """The brief's Trace check: every turn has agent, tool_call and llm_call spans
+    with parents, every talk has its NPC agent and referee spans, and no state
+    changes outside a tool_call span of the same turn."""
+    session = make_session()
+    talks = []
+    for line in TWENTY_TURNS:
+        result = session.turn(line)
+        talks.append(any(name == "talk" for name, _, _ in result.tool_results))
+    conn = session.ctx.game.conn
+    rows = [dict(r) for r in conn.execute("SELECT * FROM spans ORDER BY rowid")]
+    by_id = {r["span_id"]: r for r in rows}
+    checked = 0
+    for r in rows:                               # every parent exists, in the same trace
+        if r["parent_span_id"]:
+            assert by_id[r["parent_span_id"]]["trace_id"] == r["trace_id"]
+    for turn, has_talk in enumerate(talks, start=1):
+        spans = [r for r in rows if r["trace_id"].endswith(f"-t{turn:04d}")]
+        kinds = {r["kind"] for r in spans}
+        assert {"agent", "tool_call", "llm_call"} <= kinds, turn
+        roots = [r for r in spans if r["parent_span_id"] is None]
+        assert [(r["kind"], r["name"]) for r in roots] == [("agent", "game_master")], turn
+        if has_talk:
+            npc = [r for r in spans if r["kind"] == "agent" and r["name"].startswith("npc:")]
+            ref = [r for r in spans if r["kind"] == "referee"]
+            assert npc, turn
+            talk = [r for r in spans if r["name"] == "talk"][0]
+            assert all(by_id[r["parent_span_id"]] is talk for r in npc + ref)
+            attempt = lambda r: json.loads(r["attrs"])["game.attempt"]
+            drafts = [r for r in npc if "game.fallback" not in json.loads(r["attrs"])]
+            # every draft with words is judged; an empty draft goes straight to the fallback
+            assert sorted(map(attempt, drafts)) == sorted(map(attempt, ref)), turn
+            if ref:
+                assert any(by_id[r["parent_span_id"]]["kind"] == "referee"
+                           for r in spans if r["kind"] == "llm_call")   # the model check
+                checked += 1
+    assert sum(talks) >= 9 and checked >= 6
+    for e in events.log(conn, session.ctx.game.run_id):
+        span = by_id[e["span_id"]]
+        assert span["kind"] == "tool_call"
+        if e["type"] != "run_started":
+            assert span["trace_id"].endswith(f"-t{e['turn']:04d}"), e

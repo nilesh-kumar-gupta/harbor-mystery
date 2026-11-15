@@ -316,7 +316,7 @@ def test_game_master_turn_runs_tools_then_end_turn(ctx):
     first = llm.calls[0]
     assert first["messages"][0]["content"].startswith("Player: look around\n\nState: ")
     assert '"place": "Harbor Quay"' in first["messages"][0]["content"]
-    assert first["tools"] == ["look", "go", "notebook", "talk"]
+    assert first["tools"] == ["look", "go", "notebook", "talk", "hint"]
 
 
 def test_game_master_recovers_from_an_error_value(ctx):
@@ -333,6 +333,14 @@ def test_game_master_cap_is_three_tool_calls(ctx):
     assert result.narration.startswith(CAP_LINE) and len(result.tool_results) == 3
     assert "Your notebook is empty." in result.narration
     assert state.read(ctx.game)["turn"] == 2            # end_turn still ran
+
+
+def test_a_failing_game_master_model_still_ends_the_turn(ctx):
+    result = GameMaster(ScriptedLLM([])).run_turn(ctx, "look")
+    assert result.narration.startswith("(The game master could not answer.)")
+    assert state.read(ctx.game)["turn"] == 2
+    row = ctx.game.conn.execute("SELECT status FROM spans WHERE name = 'game_master'").fetchone()
+    assert row["status"] == "error"
 
 
 def test_case_solution_never_reaches_an_agent(make_session):
@@ -353,7 +361,7 @@ def test_prompt_hash_and_model_are_recorded(make_session):
 
 
 def test_prompt_files_are_stubs_naming_their_tools():
-    from harbor.agents import prompts
+    from harbor import prompts
     for name, tools in (("game_master", ["look", "go", "talk", "notebook", "hint", "accuse"]),
                         ("npc", ["recall_knowledge", "recall_conversation", "reveal_clue",
                                  "update_trust"]),

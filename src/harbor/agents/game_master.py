@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
-from harbor.agents import prompts
-from harbor.agents.loop import run_loop
+from harbor import prompts
+from harbor.agents.loop import LoopResult, run_loop
 from harbor.commands import render
 from harbor.llm.base import LLMClient
 from harbor.tools import REGISTRY, Context
@@ -18,6 +18,7 @@ from harbor.tools.gm_tools import state_summary
 
 MAX_TOOL_CALLS = 3
 CAP_LINE = "(Too much at once. Try one thing at a time.)"
+MODEL_ERROR = "(The game master could not answer.)"
 
 
 @dataclass
@@ -39,13 +40,18 @@ class GameMaster:
                  "game.turn": turn}
         with ctx.tracer.span("agent", "game_master", input=line, attrs=attrs) as span:
             summary = json.dumps(state_summary(ctx))
-            out = run_loop(
-                self.llm, ctx.tracer, "game_master", self.system,
-                [{"role": "user", "content": f"Player: {line}\n\nState: {summary}"}],
-                REGISTRY.schemas("gm"),
-                lambda name, args: REGISTRY.call(ctx, name, args, "gm"),
-                MAX_TOOL_CALLS, attrs={"game.turn": turn},
-            )
+            try:
+                out = run_loop(
+                    self.llm, ctx.tracer, "game_master", self.system,
+                    [{"role": "user", "content": f"Player: {line}\n\nState: {summary}"}],
+                    REGISTRY.schemas("gm"),
+                    lambda name, args: REGISTRY.call(ctx, name, args, "gm"),
+                    MAX_TOOL_CALLS, attrs={"game.turn": turn},
+                )
+            except Exception as e:  # e.g. the hosted model is unreachable: the turn still ends
+                span.status = "error"
+                span.attrs["error.type"] = type(e).__name__
+                out = LoopResult(text=f"{MODEL_ERROR} ({type(e).__name__}: {e})")
             narration = out.text.strip()
             if out.capped:  # the calls that ran still changed the game: show them
                 narration = "\n".join([CAP_LINE] + [render(n, r) for n, _, r in out.tool_results])

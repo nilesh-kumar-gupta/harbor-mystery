@@ -3,12 +3,15 @@ state through it, and returns plain JSON."""
 
 from __future__ import annotations
 
-from harbor.engine import rules, state
+from harbor import prompts, referee
+from harbor.engine import hints, rules, state
 from harbor.tools.registry import REGISTRY, Context, error
 
 LOOK_MINUTES = 5
 GO_MINUTES = 10
 TALK_MINUTES = 10
+HINT_MINUTES = 20
+REFEREE_ATTEMPTS = 3  # the first draft and up to 2 regenerations
 
 
 def _names(rows) -> list[str]:
@@ -115,24 +118,56 @@ def talk(ctx: Context, character: str, message: str) -> dict:
 
 
 def _npc_reply(ctx: Context, who, message: str) -> tuple[str, bool]:
-    """Run the NPC agent once. Returns (reply, used the fallback line)."""
+    """Draft, referee, regenerate. Returns (accepted reply, used the fallback line).
+
+    Every draft is an agent span; a draft the referee rejects keeps its raw text
+    in that span with status `rejected`, and is never stored or returned.
+    """
     card = {key: who[key] for key in
             ("id", "name", "role", "persona", "speech_style", "fallback_line")}
-    attrs = {"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": f"npc:{who['id']}",
-             "game.npc": who["id"], "game.turn": state.read(ctx.game)["turn"]}
-    with ctx.tracer.span("agent", f"npc:{who['id']}", input=message, attrs=attrs) as span:
+    note = None
+    for attempt in range(1, REFEREE_ATTEMPTS + 1):
+        draft, span = _draft(ctx, card, message, note, attempt)
+        if draft is None:          # the agent failed, hit its cap or said nothing
+            return who["fallback_line"], True
+        verdict = referee.check(ctx, card, message, draft, ctx.referee_llm,
+                                prompts.load("referee"), attempt)
+        if verdict.ok:
+            return draft, False
+        ctx.tracer.amend(span, status="rejected")
+        note = referee.LEAK_NOTE
+    return who["fallback_line"], True
+
+
+def _draft(ctx: Context, card: dict, message: str, note: str | None, attempt: int):
+    attrs = {"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": f"npc:{card['id']}",
+             "game.npc": card["id"], "game.turn": state.read(ctx.game)["turn"],
+             "game.attempt": attempt}
+    with ctx.tracer.span("agent", f"npc:{card['id']}", input=message, attrs=attrs) as span:
         depth, ctx.game.tool_depth = ctx.game.tool_depth, 0   # agent code may not write;
         try:                                                 # only its own tool calls can
-            draft = ctx.npc_runner(ctx, card, message, None)
+            draft = ctx.npc_runner(ctx, card, message, note)
         except Exception as e:  # a failing model must not leave the conversation half-written
             span.status = "error"
             span.attrs["error.type"] = type(e).__name__
             span.output = {"error": str(e)}
-            return who["fallback_line"], True
+            return None, span
         finally:
             ctx.game.tool_depth = depth
         span.output = {"text": draft.text, "capped": draft.capped}
         if draft.capped or not draft.text.strip():
             span.attrs["game.fallback"] = "tool_limit" if draft.capped else "empty_reply"
-            return who["fallback_line"], True
-    return draft.text.strip(), False
+            return None, span
+        return draft.text.strip(), span
+
+
+@REGISTRY.tool("hint", "gm",
+               "Ask for a hint: the engine names a person and place worth a visit. "
+               "Costs 20 minutes.")
+def hint(ctx: Context) -> dict:
+    game = ctx.game
+    target = hints.hint_target(game)
+    clock = state.advance_clock(game, HINT_MINUTES)
+    state.note_hint(game, target["clue_id"] if target else None)
+    shown = {k: target[k] for k in ("character", "place")} if target else None
+    return {"ok": True, "target": shown, "clock": state.clock_text(clock)}

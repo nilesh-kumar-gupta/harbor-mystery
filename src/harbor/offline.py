@@ -61,7 +61,8 @@ def npc_policy(system: str, messages: list[dict], tools: list[dict]) -> dict:
     for clue in latest["clues"]:
         if clue["id"] not in tried and not clue.get("in_notebook") and used < 4:
             return {"tool_calls": [("reveal_clue", {"clue_id": clue["id"]})]}
-    lines = [r["text"] for r in revealed] + [p["line"] for p in latest["pointers"]]
+    lines = [r["text"] for r in revealed] + [p["line"] or f"Ask {p['ask']}."
+                                             for p in latest["pointers"]]
     return {"text": " ".join(lines)}
 
 

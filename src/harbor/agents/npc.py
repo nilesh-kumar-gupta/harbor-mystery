@@ -6,7 +6,7 @@ nothing else about the case. Its tools act on the active character only.
 
 from __future__ import annotations
 
-from harbor.agents import prompts
+from harbor import prompts
 from harbor.agents.loop import run_loop
 from harbor.llm.base import LLMClient
 from harbor.tools import REGISTRY, Context, Draft

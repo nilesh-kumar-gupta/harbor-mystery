@@ -173,6 +173,10 @@ def recall(game: Game, character_id: str) -> dict:
         if p["clue_id"] == nudge:
             item["nudge"] = True
         pointers.append(item)
+    from harbor.engine import hints  # hints builds on rules; imported here to avoid a cycle
+    extra = hints.nudge_pointer(game, character_id)
+    if extra and extra["clue"] not in found:
+        pointers.append(extra)
     return {"clues": clues, "pointers": pointers, "guarded": guarded,
             "trust": state.trust_of(game, character_id),
             "shown": _trust_clues_shown(game, character_id)}

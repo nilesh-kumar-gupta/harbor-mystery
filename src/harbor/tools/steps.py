@@ -6,7 +6,7 @@ the same guard and are traced as tool calls, but they are never offered to a mod
 
 from __future__ import annotations
 
-from harbor.engine import rules, state
+from harbor.engine import hints, rules, state
 from harbor.tools.registry import REGISTRY, Context, error
 
 
@@ -31,9 +31,12 @@ def end_turn(ctx: Context) -> dict:
         return {"ok": True, "status": "ended", "result": st["result"]}
     new_clue = state.clues_found_in_turn(game, st["turn"]) > 0
     stuck = 0 if new_clue else st["turns_since_new_clue"] + 1
+    armed = None if new_clue else hints.maybe_arm_nudge(game, stuck)  # logged on this turn
     state.finish_turn(game, stuck, nudge_cleared=new_clue)
     out = {"ok": True, "status": "active", "turn": st["turn"] + 1,
            "clock": state.clock_text(st["clock"]), "turns_since_new_clue": stuck}
+    if armed:
+        out["nudge_armed"] = True   # which clue stays inside the engine
     if rules.past_end(game):
         state.end_game(game, "timeout")
         out.update(status="ended", result="timeout")

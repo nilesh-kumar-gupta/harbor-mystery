@@ -40,6 +40,7 @@ class Context:
     game: Game
     tracer: Tracer | None = None  # filled in below, so no call can run untraced
     npc_runner: Callable[..., Draft] | None = None
+    referee_llm: Any = None  # the cheap model for the referee's second check; None: code check only
 
     def __post_init__(self) -> None:
         # one tracer per run, so span ids never collide between contexts

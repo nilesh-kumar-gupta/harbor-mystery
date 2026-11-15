@@ -69,6 +69,8 @@ def render(tool: str, result: dict) -> str:
         return text
     if tool == "hint":
         target = result["target"]
+        if target is None:
+            return f"Hint: you have heard what there is to hear. Time to accuse? [{result['clock']}]"
         where = f" at {target['place']}" if target.get("place") else ""
         return f"Hint: {target.get('character') or 'someone'}{where} could help. [{result['clock']}]"
     if tool == "accuse":
